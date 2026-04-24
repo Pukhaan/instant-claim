@@ -1,13 +1,10 @@
 import ClaimWizard from "./claim-wizard";
-import ClaimHeader from "./claim-header";
 
 export const dynamic = "force-dynamic";
 
+// SnapClaim is intentionally rendered without the Teller chrome (no logo bar,
+// no max-width container) — every screen owns the entire viewport for an
+// app-like feel on iPhone. The wizard handles its own padding + safe areas.
 export default function ClaimPage() {
-  return (
-    <div className="flex-1 w-full max-w-3xl mx-auto px-6 py-8 md:py-12 flex flex-col min-h-screen">
-      <ClaimHeader />
-      <ClaimWizard />
-    </div>
-  );
+  return <ClaimWizard />;
 }

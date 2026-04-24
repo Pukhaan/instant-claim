@@ -108,3 +108,42 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   font-feature-settings: "cv11", "ss01";
 }
+
+/* SnapClaim · "lab" persona — scoped, dark + lime, mobile-native claim flow.
+   Applies *only* under .snap so the rest of Teller keeps the orange-on-cream
+   look. Variables here mirror the design canvas tokens 1:1. */
+.snap {
+  --snap-ink: #0a0c09;
+  --snap-surface: #141711;
+  --snap-surface-2: #1c1f18;
+  --snap-text: #ecefe4;
+  --snap-text-muted: #717a68;
+  --snap-text-soft: #9aa08c;
+  --snap-lime: #c8f535;
+  --snap-lime-dim: rgba(200, 245, 53, 0.15);
+  --snap-lime-faint: rgba(200, 245, 53, 0.06);
+  --snap-lime-border: rgba(200, 245, 53, 0.22);
+  --snap-red: #ff6b6b;
+  --snap-amber: #ffb340;
+  --snap-blue: #7ec4ff;
+  --snap-border: rgba(255, 255, 255, 0.08);
+  --snap-border-strong: rgba(255, 255, 255, 0.14);
+  background: var(--snap-ink);
+  color: var(--snap-text);
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.snap-mono {
+  font-family: var(--font-mono-snap), "SF Mono", ui-monospace, monospace;
+}
+
+/* Stop iOS Safari zooming when an input gets focus — anything ≥16px doesn't
+   trigger the zoom. Also remove the blue tap highlight in the claim flow. */
+.snap input,
+.snap textarea {
+  font-size: 16px;
+}
+.snap * {
+  -webkit-tap-highlight-color: transparent;
+}
