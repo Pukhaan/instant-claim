@@ -5,6 +5,7 @@ import { streamChat, resetChat, type ChatEvent } from "@/lib/chat";
 import { createRecorder, transcribeBlob, type RecorderHandle } from "@/lib/voice";
 import { uploadReceipt } from "@/lib/receipt";
 import { submitClaim } from "@/lib/claim";
+import { classifyPhoto } from "@/lib/photo-classify";
 import { cycleSubmitSteps } from "../claim/decision";
 import AssistantMessage from "./assistant-message";
 import ReceiptMessage, { type ReceiptMessageState } from "./receipt-message";
@@ -59,33 +60,84 @@ const STARTERS = [
   "Create a sub-account called Emergency Savings",
 ];
 
-/** Words that flag the user is opening a claim, not a balance question. */
+/** Words/phrases that flag the user is opening a claim, not a balance
+ *  question. Wide net on purpose — natural speech ("my flight was delayed",
+ *  "dropped my phone", "laptop won't turn on", "screen is dead") should all
+ *  route into the claim flow. */
 const CLAIM_TRIGGERS = [
+  // explicit insurance / claim words
   "claim",
+  "claims",
+  "insurance",
+  "refund",
+  "warranty",
+  "payout",
+  "compensation",
+  // damage states
   "broke",
   "broken",
   "cracked",
   "smashed",
   "shattered",
+  "damaged",
+  "damage",
+  "ruined",
+  "wrecked",
+  "killed",
+  "dead",
+  "fried",
+  "soaked",
+  // damage actions
+  "dropped",
+  "fell",
+  "knocked",
+  "spilled",
+  "spilt",
+  "smashed up",
+  "ran over",
+  "stepped on",
+  // device misbehaviour
+  "won't turn on",
+  "wont turn on",
+  "doesn't work",
+  "doesnt work",
+  "isn't working",
+  "isnt working",
+  "stopped working",
+  "not working",
+  "won't charge",
+  "wont charge",
+  "won't start",
+  "wont start",
+  // theft / loss
   "stolen",
   "theft",
   "robbed",
+  "missing",
+  "lost my",
+  "lost luggage",
+  "lost bag",
+  "lost wallet",
+  // travel issues
   "delayed",
   "delay",
   "cancelled",
   "canceled",
   "missed flight",
-  "lost luggage",
-  "lost my",
-  "damaged",
-  "damage",
-  "insurance",
-  "refund",
-  "warranty",
+  "missed my flight",
+  "missed connection",
+  "stranded",
+  "diverted",
+  // soft cues
+  "i need help",
+  "need help with",
+  "screen is",
 ];
 
 const CLAIM_RE = new RegExp(
-  String.raw`\b(?:${CLAIM_TRIGGERS.map((w) => w.replace(/\s+/g, "\\s+")).join("|")})\b`,
+  String.raw`(?:^|[\s.,!?;:])(?:${CLAIM_TRIGGERS.map((w) =>
+    w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"),
+  ).join("|")})(?=$|[\s.,!?;:])`,
   "i",
 );
 
@@ -101,6 +153,58 @@ function isBareClaimOpener(text: string): boolean {
   return /^(?:i\s+(?:have|want|need)|file|start|open|do|do you|can you|how do i|how to)?\s*(?:a\s+|to\s+)?(?:make\s+|file\s+|do\s+|start\s+)?(?:an?\s+)?claim\b[\s.!?]*$/i.test(
     t,
   );
+}
+
+/** Templated "sounds like your X took a hit" reply, picked from cues in
+ *  the user's text. Returns just the lead phrase — caller appends the
+ *  rest of the bubble. */
+function describeSubject(text: string): string {
+  const t = text.toLowerCase();
+  if (
+    /\b(phone|iphone|android|samsung|pixel|screen)\b/.test(t) &&
+    /\b(broke|broken|cracked|smashed|shattered|dropped|dead|fried|soaked|won't|wont|isn't|isnt|not working|stopped)\b/.test(
+      t,
+    )
+  ) {
+    return "your phone took a hit";
+  }
+  if (/\b(laptop|macbook|computer|notebook|chromebook)\b/.test(t)) {
+    return "your laptop's having a rough time";
+  }
+  if (/\b(headphones|airpods|earbuds|earphones)\b/.test(t)) {
+    return "your headphones are giving you grief";
+  }
+  if (/\b(camera|gopro|lens)\b/.test(t)) {
+    return "your camera took a knock";
+  }
+  if (/\b(watch|smartwatch|apple watch)\b/.test(t)) {
+    return "your watch is in trouble";
+  }
+  if (/\b(tablet|ipad)\b/.test(t)) {
+    return "your tablet got banged up";
+  }
+  if (/\b(flight|plane|airline|airport|boarding)\b.*\b(delay|delayed|cancel|cancelled|canceled|missed|stranded|diverted)\b/.test(t)) {
+    return "your flight didn't go to plan";
+  }
+  if (/\b(train|tram|metro|bus)\b.*\b(delay|delayed|cancel|cancelled|canceled|missed|late)\b/.test(t)) {
+    return "your trip got disrupted";
+  }
+  if (/\b(luggage|bag|suitcase|baggage|backpack)\b.*\b(lost|stolen|missing|delayed)\b/.test(t)) {
+    return "your bag's gone walkabout";
+  }
+  if (/\b(stolen|theft|robbed)\b/.test(t)) {
+    return "something got taken";
+  }
+  if (/\b(lost|missing)\b/.test(t)) {
+    return "you've lost something";
+  }
+  if (/\b(broke|broken|cracked|smashed|shattered|damaged|ruined|wrecked)\b/.test(t)) {
+    return "something got damaged";
+  }
+  if (/\b(delay|delayed|cancel|cancelled|canceled)\b/.test(t)) {
+    return "your travel got disrupted";
+  }
+  return "something's gone wrong";
 }
 
 export default function ChatView({ hero = false }: { hero?: boolean }) {
@@ -194,17 +298,22 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     }
   }
 
-  // ---------------- receipt scan (composer camera) ----------------
+  // ---------------- composer camera ----------------
+  // Single entry: take a photo. Backend classifies it. Receipt → categorise.
+  // Damage / claim evidence → start the claim flow with the photo pre-attached.
 
-  async function pickReceipt(file: File) {
+  async function pickPhoto(file: File) {
     const previewUrl = URL.createObjectURL(file);
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
       kind: "image",
       previewUrl,
-      caption: "Receipt",
+      caption: "Photo",
     };
+    // Generic "looking" placeholder. Once the classifier returns we either
+    // upgrade it to a receipt result, or replace it with the start of the
+    // claim flow.
     const asst: Message = {
       id: crypto.randomUUID(),
       role: "assistant",
@@ -213,6 +322,43 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     };
     setMessages((m) => [...m, userMsg, asst]);
 
+    let kind: "receipt" | "damage" | "other" = "receipt";
+    let subject = "";
+    try {
+      const c = await classifyPhoto(file);
+      kind = c.kind;
+      subject = c.subject;
+    } catch {
+      // Classifier failed — fall back to receipt handling.
+      kind = "receipt";
+    }
+
+    if (kind === "damage") {
+      // Tear down the placeholder, keep the user image, and start the claim
+      // flow at the voice step with the photo pre-attached.
+      setClaim({
+        active: true,
+        photo: { file, preview: previewUrl },
+        audio: null,
+        transcript: null,
+        recordingStream: null,
+      });
+      setMessages((m) => [
+        ...m.filter(
+          (msg) =>
+            !(msg.role === "assistant" && msg.kind === "receipt" && msg.id === asst.id),
+        ),
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          kind: "claim",
+          phase: { kind: "voice", lead: subject || "something got damaged" },
+        },
+      ]);
+      return;
+    }
+
+    // Receipt or other → existing receipt extraction.
     try {
       const result = await uploadReceipt(file);
       setMessages((m) =>
@@ -313,8 +459,11 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   }
 
   /** User typed (or spoke) something descriptive enough to use as the claim
-   *  transcript directly — skip voice and go straight to the photo step. */
+   *  transcript directly — skip voice and go straight to the photo step.
+   *  Echo the subject back ("sounds like your phone took a hit") so they
+   *  feel heard. */
   function startClaimWithDescription(userText: string) {
+    const lead = describeSubject(userText);
     setClaim({
       active: true,
       photo: null,
@@ -334,7 +483,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
         id: crypto.randomUUID(),
         role: "assistant",
         kind: "claim",
-        phase: { kind: "photo" },
+        phase: { kind: "photo", lead },
       },
     ]);
   }
@@ -486,13 +635,94 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
         kind: "text",
         text: "Sounds right",
       },
+    ]);
+
+    // Photo-first path: photo is already attached, so we have everything.
+    // Skip straight to processing + submit.
+    if (claim.photo) {
+      submitClaimNow();
+      return;
+    }
+
+    // Voice-first path: ask for a photo next.
+    const lead = claim.transcript ? describeSubject(claim.transcript) : undefined;
+    setMessages((m) => [
+      ...m,
       {
         id: crypto.randomUUID(),
         role: "assistant",
         kind: "claim",
-        phase: { kind: "photo" },
+        phase: { kind: "photo", lead },
       },
     ]);
+  }
+
+  function submitClaimNow() {
+    const photo = claim.photo;
+    const transcript = claim.transcript;
+    if (!photo || !transcript) return;
+
+    const processingMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      kind: "claim",
+      phase: { kind: "processing", step: "reading_photo" },
+    };
+    setMessages((m) => [...m, processingMsg]);
+
+    const ticker = cycleSubmitSteps((step) =>
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === processingMsg.id &&
+          msg.kind === "claim" &&
+          msg.phase.kind === "processing"
+            ? { ...msg, phase: { ...msg.phase, step } }
+            : msg,
+        ),
+      ),
+    );
+
+    submitClaim({ image: photo.file, transcript, coverage: CLAIM_COVERAGE })
+      .then((result) => {
+        ticker.cancel();
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === processingMsg.id && msg.kind === "claim"
+              ? { ...msg, phase: { kind: "decided", result } }
+              : msg,
+          ),
+        );
+        setClaim({
+          active: false,
+          photo: null,
+          audio: null,
+          transcript: null,
+          recordingStream: null,
+        });
+      })
+      .catch((err) => {
+        ticker.cancel();
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === processingMsg.id && msg.kind === "claim"
+              ? {
+                  ...msg,
+                  phase: {
+                    kind: "error",
+                    error: err instanceof Error ? err.message : String(err),
+                  },
+                }
+              : msg,
+          ),
+        );
+        setClaim({
+          active: false,
+          photo: null,
+          audio: null,
+          transcript: null,
+          recordingStream: null,
+        });
+      });
   }
 
   function rerecordClaimVoice() {
@@ -668,7 +898,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
           capture="environment"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) pickReceipt(f);
+            if (f) pickPhoto(f);
             if (fileInputRef.current) fileInputRef.current.value = "";
           }}
           className="sr-only"

@@ -6,11 +6,11 @@ import type { ClaimResponse } from "@/lib/claim";
 import Waveform from "./waveform";
 
 export type ClaimPhase =
-  | { kind: "voice" }
-  | { kind: "voiceRecording"; elapsed: number }
+  | { kind: "voice"; lead?: string }
+  | { kind: "voiceRecording"; elapsed: number; lead?: string }
   | { kind: "transcribing" }
   | { kind: "review"; transcript: string; duration: number }
-  | { kind: "photo" }
+  | { kind: "photo"; lead?: string }
   | { kind: "processing"; step: SubmitStep }
   | { kind: "decided"; result: ClaimResponse }
   | { kind: "error"; error: string };
@@ -49,6 +49,7 @@ export default function ClaimMessage({
             elapsed={0}
             max={voiceMaxSeconds}
             stream={null}
+            lead={phase.lead}
           />
         )}
         {phase.kind === "voiceRecording" && (
@@ -60,6 +61,7 @@ export default function ClaimMessage({
             elapsed={phase.elapsed}
             max={voiceMaxSeconds}
             stream={recordingStream}
+            lead={phase.lead}
           />
         )}
         {phase.kind === "transcribing" && <TranscribingCard />}
@@ -71,7 +73,7 @@ export default function ClaimMessage({
             onRerecord={onRerecord}
           />
         )}
-        {phase.kind === "photo" && <PhotoCard onPick={onPickPhoto} />}
+        {phase.kind === "photo" && <PhotoCard onPick={onPickPhoto} lead={phase.lead} />}
         {phase.kind === "processing" && <ProcessingChat step={phase.step} />}
         {phase.kind === "decided" && (
           <DecisionInline result={phase.result} onNewClaim={onNewClaim} />
@@ -141,11 +143,22 @@ function ReviewCard({
   );
 }
 
-function PhotoCard({ onPick }: { onPick: () => void }) {
+function PhotoCard({ onPick, lead }: { onPick: () => void; lead?: string }) {
   return (
     <>
       <Bubble>
-        Got it. Now <strong>send me a photo</strong> — the damaged item, the receipt, the delay board. One clear shot is plenty.
+        {lead ? (
+          <>
+            Got it — sounds like <strong>{lead}</strong>. Sorry to hear that. Send me a{" "}
+            <strong>photo</strong> so I can take a look — the damaged item, the receipt, or the
+            delay notice. One clear shot is plenty.
+          </>
+        ) : (
+          <>
+            Got it. Now <strong>send me a photo</strong> — the damaged item, the receipt, or the
+            delay board. One clear shot is plenty.
+          </>
+        )}
       </Bubble>
       <button
         onClick={onPick}
@@ -204,6 +217,7 @@ function VoiceCard({
   elapsed,
   max,
   stream,
+  lead,
 }: {
   onStart: () => void;
   onStop?: () => void;
@@ -212,15 +226,25 @@ function VoiceCard({
   elapsed: number;
   max: number;
   stream: MediaStream | null;
+  lead?: string;
 }) {
   const remaining = Math.max(0, max - elapsed);
   const recording = state === "recording";
   return (
     <>
       <Bubble>
-        <strong>Let&apos;s sort this out.</strong>
-        {" "}Just talk to me — what happened, when, where, and roughly what it cost. I&apos;ll pull
-        the facts out for you. Up to {max} seconds.
+        {lead ? (
+          <>
+            Looks like <strong>{lead}</strong>. Sorry to hear that. Tell me what happened, when,
+            and roughly what it cost — up to {max} seconds.
+          </>
+        ) : (
+          <>
+            <strong>Let&apos;s sort this out.</strong>
+            {" "}Just talk to me — what happened, when, where, and roughly what it cost.
+            I&apos;ll pull the facts out for you. Up to {max} seconds.
+          </>
+        )}
       </Bubble>
       <div
         className={`rounded-2xl border transition-colors p-5 flex flex-col gap-4 ${
