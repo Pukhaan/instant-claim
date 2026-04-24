@@ -1,18 +1,29 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { streamChat, resetChat, type ChatEvent } from "@/lib/chat";
 import { createRecorder, transcribeBlob, type RecorderHandle } from "@/lib/voice";
+import { uploadReceipt } from "@/lib/receipt";
 import AssistantMessage from "./assistant-message";
+import ReceiptMessage, { type ReceiptMessageState } from "./receipt-message";
 
 type Message =
-  | { id: string; role: "user"; text: string }
+  | { id: string; role: "user"; kind: "text"; text: string }
+  | { id: string; role: "user"; kind: "image"; previewUrl: string; caption: string }
   | {
       id: string;
       role: "assistant";
+      kind: "text";
       text: string;
       toolCalls: ToolCall[];
       pending: boolean;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "receipt";
+      state: ReceiptMessageState;
     };
 
 type ToolCall = {
@@ -49,6 +60,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -59,10 +71,16 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
 
   async function send(text: string) {
     if (!text.trim() || isStreaming) return;
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", text };
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      kind: "text",
+      text,
+    };
     const asst: Message = {
       id: crypto.randomUUID(),
       role: "assistant",
+      kind: "text",
       text: "",
       toolCalls: [],
       pending: true,
@@ -78,10 +96,55 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     } finally {
       setMessages((m) =>
         m.map((msg) =>
-          msg.id === asst.id && msg.role === "assistant" ? { ...msg, pending: false } : msg,
+          msg.id === asst.id && msg.role === "assistant" && msg.kind === "text"
+            ? { ...msg, pending: false }
+            : msg,
         ),
       );
       setIsStreaming(false);
+    }
+  }
+
+  async function pickReceipt(file: File) {
+    const previewUrl = URL.createObjectURL(file);
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      kind: "image",
+      previewUrl,
+      caption: "Receipt",
+    };
+    const asst: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      kind: "receipt",
+      state: { phase: "reading" },
+    };
+    setMessages((m) => [...m, userMsg, asst]);
+
+    try {
+      const result = await uploadReceipt(file);
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === asst.id && msg.role === "assistant" && msg.kind === "receipt"
+            ? { ...msg, state: { phase: "ready", result } }
+            : msg,
+        ),
+      );
+    } catch (err) {
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === asst.id && msg.role === "assistant" && msg.kind === "receipt"
+            ? {
+                ...msg,
+                state: {
+                  phase: "error",
+                  error: err instanceof Error ? err.message : String(err),
+                },
+              }
+            : msg,
+        ),
+      );
     }
   }
 
@@ -140,12 +203,28 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       </div>
 
       <form
-        className="sticky bottom-4 flex items-end gap-2 bg-[var(--card)] rounded-2xl border border-[var(--border)] p-3 shadow-sm"
+        className="sticky bottom-4 flex items-end gap-2 bg-[var(--card)] rounded-3xl border border-[var(--border)] p-3 shadow-sm"
         onSubmit={(e) => {
           e.preventDefault();
           send(input);
         }}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+          capture="environment"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) pickReceipt(f);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }}
+          className="sr-only"
+        />
+        <CameraButton
+          onClick={() => fileInputRef.current?.click()}
+          disabled={voice !== "idle"}
+        />
         <MicButton state={voice} error={voiceError} onToggle={toggleMic} />
         <textarea
           value={input}
@@ -181,7 +260,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
           <button
             type="submit"
             disabled={isStreaming || voice !== "idle" || !input.trim()}
-            className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] transition-colors hover:bg-accent-hover disabled:opacity-30"
+            className="inline-flex h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] transition-colors hover:bg-accent-hover disabled:opacity-30"
           >
             {isStreaming ? "…" : "Send"}
           </button>
@@ -224,11 +303,42 @@ function Starters({ hero, onPick }: { hero: boolean; onPick: (s: string) => void
         </>
       )}
       <ul className="space-y-2">
+        <li>
+          <Link
+            href="/claim"
+            className="group flex items-center justify-between gap-3 w-full text-left text-sm px-4 py-3 rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-subtle)] hover:bg-[var(--accent-subtle)] transition-colors"
+          >
+            <span className="flex items-center gap-3 min-w-0">
+              <span
+                className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-accent text-[var(--accent-contrast)] shrink-0"
+                aria-hidden
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                  <circle cx="12" cy="13" r="3.5" />
+                </svg>
+              </span>
+              <span className="truncate">I have a claim — phone, travel, or something else</span>
+            </span>
+            <span className="text-muted text-xs group-hover:text-foreground transition-colors shrink-0">
+              →
+            </span>
+          </Link>
+        </li>
         {STARTERS.map((s) => (
           <li key={s}>
             <button
               onClick={() => onPick(s)}
-              className="w-full text-left text-sm px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors"
+              className="w-full text-left text-sm px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors"
             >
               {s}
             </button>
@@ -240,6 +350,19 @@ function Starters({ hero, onPick }: { hero: boolean; onPick: (s: string) => void
 }
 
 function MessageRow({ msg }: { msg: Message }) {
+  if (msg.role === "user" && msg.kind === "image") {
+    return (
+      <div className="flex justify-end">
+        <figure className="max-w-[60%] rounded-2xl rounded-br-sm border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={msg.previewUrl} alt={msg.caption} className="block w-full max-h-72 object-cover" />
+          <figcaption className="text-xs text-muted px-3 py-1.5 border-t border-[var(--border)]">
+            {msg.caption}
+          </figcaption>
+        </figure>
+      </div>
+    );
+  }
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -248,6 +371,9 @@ function MessageRow({ msg }: { msg: Message }) {
         </div>
       </div>
     );
+  }
+  if (msg.kind === "receipt") {
+    return <ReceiptMessage state={msg.state} />;
   }
   return (
     <div className="space-y-2">
@@ -285,6 +411,41 @@ function ToolCallRow({ call }: { call: ToolCall }) {
   );
 }
 
+function CameraButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title="Scan a receipt"
+      aria-label="Scan a receipt"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-foreground hover:border-[var(--border-strong)] hover:bg-[var(--input)] transition-colors disabled:opacity-40"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+        <circle cx="12" cy="13" r="3.5" />
+      </svg>
+      <span className="sr-only">Scan a receipt</span>
+    </button>
+  );
+}
+
 function MicButton({
   state,
   error,
@@ -309,7 +470,7 @@ function MicButton({
             : error ?? "Hold to speak"
       }
       aria-label={active ? "Stop recording" : "Start voice input"}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
         active
           ? "border-accent bg-accent text-[var(--accent-contrast)]"
           : busy
@@ -398,7 +559,7 @@ function summarize(call: ToolCall): string {
 
 function applyEvent(messages: Message[], asstId: string, evt: ChatEvent): Message[] {
   return messages.map((msg) => {
-    if (msg.id !== asstId || msg.role !== "assistant") return msg;
+    if (msg.id !== asstId || msg.role !== "assistant" || msg.kind !== "text") return msg;
     switch (evt.type) {
       case "text_delta":
         return { ...msg, text: msg.text + evt.text };

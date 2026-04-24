@@ -26,7 +26,7 @@ export default function TopUpButton() {
         type="button"
         onClick={topUp}
         disabled={pending}
-        className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] px-4 text-sm font-medium hover:border-[var(--border-strong)] hover:bg-[var(--input)] transition-colors disabled:opacity-50"
+        className="inline-flex h-9 items-center rounded-full border border-[var(--border)] px-4 text-sm font-medium hover:border-[var(--border-strong)] hover:bg-[var(--input)] transition-colors disabled:opacity-50"
       >
         {pending ? "requesting…" : "Request €500"}
       </button>
