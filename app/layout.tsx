@@ -1,10 +1,25 @@
 import type { Metadata } from "next";
+import { DM_Mono, Syne } from "next/font/google";
 import "./globals.css";
 
+const syne = Syne({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-syne",
+  display: "swap",
+});
+
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  variable: "--font-dm-mono",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Instant Claim · bunq",
+  title: "SnapClaim · Instant insurance claims",
   description:
-    "Multimodal AI insurance claims. Photo + voice note → decision + payout in under 30 seconds.",
+    "Snap a photo. Say what happened. Money in your bunq account in under 30 seconds.",
 };
 
 export default function RootLayout({
@@ -13,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-bunq-gray text-bunq-dark antialiased">
+    <html lang="en" className={`${syne.variable} ${dmMono.variable}`}>
+      <body className="min-h-screen bg-ink font-sans text-text antialiased">
         {children}
       </body>
     </html>
