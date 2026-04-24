@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { streamChat, resetChat, type ChatEvent } from "@/lib/chat";
 import { createRecorder, transcribeBlob, type RecorderHandle } from "@/lib/voice";
 import { uploadReceipt } from "@/lib/receipt";
-import { submitClaim, type ClaimResponse, type Coverage } from "@/lib/claim";
+import { submitClaim, type ClaimResponse } from "@/lib/claim";
 import { cycleSubmitSteps } from "../claim/decision";
 import AssistantMessage from "./assistant-message";
 import ReceiptMessage, { type ReceiptMessageState } from "./receipt-message";
@@ -46,9 +46,9 @@ type VoiceState = "idle" | "recording" | "transcribing" | "error";
 
 type ClaimFlow = {
   active: boolean;
-  coverage: Coverage | null;
   photo: { file: File; preview: string } | null;
   audio: { blob: Blob; duration: number } | null;
+  recordingStream: MediaStream | null;
 };
 
 const STARTERS = [
@@ -57,12 +57,6 @@ const STARTERS = [
   "I just got a €500 bonus — help me split it into savings, stocks, and fun money",
   "Create a sub-account called Emergency Savings",
 ];
-
-const COVERAGE_LABEL: Record<Coverage, string> = {
-  phone: "Phone or device",
-  travel: "Travel",
-  default: "Something else",
-};
 
 export default function ChatView({ hero = false }: { hero?: boolean }) {
   const sessionId = useMemo(() => {
@@ -82,9 +76,9 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [claim, setClaim] = useState<ClaimFlow>({
     active: false,
-    coverage: null,
     photo: null,
     audio: null,
+    recordingStream: null,
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -225,9 +219,14 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   }
 
   // ---------------- claim flow (in-chat orchestrator) ----------------
+  // New sequence:
+  //   I have a claim → voice ("what's going on?") → audio bubble + transcript
+  //   → photo prompt → image bubble → submit → decision card.
+
+  const CLAIM_COVERAGE = "default" as const;
 
   function startClaim() {
-    setClaim({ active: true, coverage: null, photo: null, audio: null });
+    setClaim({ active: true, photo: null, audio: null, recordingStream: null });
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -238,71 +237,25 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       id: crypto.randomUUID(),
       role: "assistant",
       kind: "claim",
-      phase: { kind: "coverage" },
+      phase: { kind: "voice" },
     };
     setMessages((m) => [...m, userMsg, promptMsg]);
-  }
-
-  function pickCoverage(c: Coverage) {
-    setClaim((s) => ({ ...s, coverage: c }));
-    setMessages((m) => [
-      ...m,
-      {
-        id: crypto.randomUUID(),
-        role: "user",
-        kind: "text",
-        text: COVERAGE_LABEL[c],
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        kind: "claim",
-        phase: { kind: "photo", coverage: c },
-      },
-    ]);
   }
 
   function openClaimCamera() {
     claimFileInputRef.current?.click();
   }
 
-  function pickClaimPhoto(file: File) {
-    const cov = claim.coverage;
-    if (!cov) return;
-    const preview = URL.createObjectURL(file);
-    setClaim((s) => ({ ...s, photo: { file, preview } }));
-    setMessages((m) => [
-      ...m,
-      {
-        id: crypto.randomUUID(),
-        role: "user",
-        kind: "image",
-        previewUrl: preview,
-        caption: "Damage photo",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        kind: "claim",
-        phase: { kind: "voice", coverage: cov },
-      },
-    ]);
-  }
-
   async function startClaimVoice() {
-    const cov = claim.coverage;
-    if (!cov) return;
     try {
-      claimRecorderRef.current = createRecorder();
-      await claimRecorderRef.current.start();
+      const recorder = createRecorder();
+      claimRecorderRef.current = recorder;
+      await recorder.start();
+      const stream = recorder.getStream();
       claimStartRef.current = Date.now();
-      // Mutate the last claim message into voiceRecording.
+      setClaim((s) => ({ ...s, recordingStream: stream }));
       setMessages((m) =>
-        mutateLastClaim(m, () => ({
-          kind: "voiceRecording",
-          coverage: cov,
-          elapsed: 0,
-        })),
+        mutateLastClaim(m, () => ({ kind: "voiceRecording", elapsed: 0 })),
       );
       claimTimerRef.current = window.setInterval(() => {
         const elapsed = (Date.now() - claimStartRef.current) / 1000;
@@ -311,9 +264,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
         } else {
           setMessages((m) =>
             mutateLastClaim(m, (curr) =>
-              curr.kind === "voiceRecording"
-                ? { ...curr, elapsed }
-                : curr,
+              curr.kind === "voiceRecording" ? { ...curr, elapsed } : curr,
             ),
           );
         }
@@ -325,6 +276,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
           error: err instanceof Error ? err.message : "Mic permission denied",
         })),
       );
+      setClaim((s) => ({ ...s, recordingStream: null }));
     }
   }
 
@@ -333,47 +285,94 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       window.clearInterval(claimTimerRef.current);
       claimTimerRef.current = null;
     }
-    const cov = claim.coverage;
-    const photo = claim.photo;
-    if (!cov || !photo) return;
     try {
       const blob = await claimRecorderRef.current!.stop();
       const duration = (Date.now() - claimStartRef.current) / 1000;
-      setClaim((s) => ({ ...s, audio: { blob, duration } }));
-
-      const userAudio: Message = {
-        id: crypto.randomUUID(),
-        role: "user",
-        kind: "audio",
-        blob,
-        duration,
-        caption: "Voice note",
-      };
-      const processingMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        kind: "claim",
-        phase: { kind: "processing", coverage: cov, step: "reading_photo" },
-      };
-      setMessages((m) => [...m, userAudio, processingMsg]);
-
-      // Cosmetic step-cycler
-      const ticker = cycleSubmitSteps((step) =>
-        setMessages((m) =>
-          m.map((msg) =>
-            msg.id === processingMsg.id && msg.kind === "claim" && msg.phase.kind === "processing"
-              ? { ...msg, phase: { ...msg.phase, step } }
-              : msg,
-          ),
-        ),
+      setClaim((s) => ({ ...s, audio: { blob, duration }, recordingStream: null }));
+      setMessages((m) =>
+        mutateLastClaim(m, () => ({ kind: "transcribing" })),
       );
+      // Push the user audio bubble + advance the assistant bubble to "photo".
+      setMessages((m) => [
+        ...m.filter(
+          (msg) =>
+            !(
+              msg.role === "assistant" &&
+              msg.kind === "claim" &&
+              msg.phase.kind === "transcribing"
+            ),
+        ),
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          kind: "audio",
+          blob,
+          duration,
+          caption: "Voice note",
+        },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          kind: "claim",
+          phase: { kind: "photo" },
+        },
+      ]);
+    } catch (err) {
+      setMessages((m) =>
+        mutateLastClaim(m, () => ({
+          kind: "error",
+          error: err instanceof Error ? err.message : String(err),
+        })),
+      );
+      setClaim((s) => ({ ...s, recordingStream: null }));
+    }
+  }
 
-      try {
-        const result = await submitClaim({
-          image: photo.file,
-          audio: blob,
-          coverage: cov,
-        });
+  function cancelClaimVoice() {
+    if (claimTimerRef.current) {
+      window.clearInterval(claimTimerRef.current);
+      claimTimerRef.current = null;
+    }
+    claimRecorderRef.current?.cancel();
+    setClaim((s) => ({ ...s, recordingStream: null }));
+    setMessages((m) => mutateLastClaim(m, () => ({ kind: "voice" })));
+  }
+
+  function pickClaimPhoto(file: File) {
+    const audio = claim.audio;
+    if (!audio) return;
+    const preview = URL.createObjectURL(file);
+    setClaim((s) => ({ ...s, photo: { file, preview } }));
+
+    const userImage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      kind: "image",
+      previewUrl: preview,
+      caption: "Damage photo",
+    };
+    const processingMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      kind: "claim",
+      phase: { kind: "processing", step: "reading_photo" },
+    };
+    setMessages((m) => [...m, userImage, processingMsg]);
+
+    const ticker = cycleSubmitSteps((step) =>
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === processingMsg.id &&
+          msg.kind === "claim" &&
+          msg.phase.kind === "processing"
+            ? { ...msg, phase: { ...msg.phase, step } }
+            : msg,
+        ),
+      ),
+    );
+
+    submitClaim({ image: file, audio: audio.blob, coverage: CLAIM_COVERAGE })
+      .then((result) => {
         ticker.cancel();
         setMessages((m) =>
           m.map((msg) =>
@@ -382,8 +381,9 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
               : msg,
           ),
         );
-        setClaim({ active: false, coverage: null, photo: null, audio: null });
-      } catch (err) {
+        setClaim({ active: false, photo: null, audio: null, recordingStream: null });
+      })
+      .catch((err) => {
         ticker.cancel();
         setMessages((m) =>
           m.map((msg) =>
@@ -398,29 +398,8 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
               : msg,
           ),
         );
-        setClaim({ active: false, coverage: null, photo: null, audio: null });
-      }
-    } catch (err) {
-      setMessages((m) =>
-        mutateLastClaim(m, () => ({
-          kind: "error",
-          error: err instanceof Error ? err.message : String(err),
-        })),
-      );
-    }
-  }
-
-  function cancelClaimVoice() {
-    if (claimTimerRef.current) {
-      window.clearInterval(claimTimerRef.current);
-      claimTimerRef.current = null;
-    }
-    claimRecorderRef.current?.cancel();
-    const cov = claim.coverage;
-    if (!cov) return;
-    setMessages((m) =>
-      mutateLastClaim(m, () => ({ kind: "voice", coverage: cov })),
-    );
+        setClaim({ active: false, photo: null, audio: null, recordingStream: null });
+      });
   }
 
   // ---------------- misc ----------------
@@ -428,7 +407,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   async function reset() {
     await resetChat(sessionId);
     setMessages([]);
-    setClaim({ active: false, coverage: null, photo: null, audio: null });
+    setClaim({ active: false, photo: null, audio: null, recordingStream: null });
   }
 
   const hasMessages = messages.length > 0;
@@ -444,7 +423,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
             <MessageRow
               key={msg.id}
               msg={msg}
-              onCoverage={pickCoverage}
+              recordingStream={claim.recordingStream}
               onPickPhoto={openClaimCamera}
               onStartVoice={startClaimVoice}
               onStopVoice={stopClaimVoice}
@@ -627,7 +606,7 @@ function Starters({
 
 function MessageRow({
   msg,
-  onCoverage,
+  recordingStream,
   onPickPhoto,
   onStartVoice,
   onStopVoice,
@@ -635,7 +614,7 @@ function MessageRow({
   onNewClaim,
 }: {
   msg: Message;
-  onCoverage: (c: Coverage) => void;
+  recordingStream: MediaStream | null;
   onPickPhoto: () => void;
   onStartVoice: () => void;
   onStopVoice: () => void;
@@ -674,7 +653,7 @@ function MessageRow({
     return (
       <ClaimMessage
         phase={msg.phase}
-        onCoverage={onCoverage}
+        recordingStream={recordingStream}
         onPickPhoto={onPickPhoto}
         onStartVoice={onStartVoice}
         onStopVoice={onStopVoice}

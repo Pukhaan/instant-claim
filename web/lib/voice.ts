@@ -5,6 +5,10 @@ export type RecorderHandle = {
   stop: () => Promise<Blob>;
   cancel: () => void;
   isActive: () => boolean;
+  /** The active mic stream while recording. Useful for piping into a
+   *  Web Audio AnalyserNode for waveform rendering. Null before start
+   *  / after stop. */
+  getStream: () => MediaStream | null;
 };
 
 /**
@@ -77,6 +81,8 @@ export function createRecorder(): RecorderHandle {
     },
 
     isActive: () => recorder != null && recorder.state === "recording",
+
+    getStream: () => stream,
   };
 }
 

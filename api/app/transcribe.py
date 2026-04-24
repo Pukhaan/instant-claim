@@ -27,8 +27,12 @@ _bucket: str | None = None
 _bucket_lock = threading.Lock()
 
 AUDIO_PREFIX = "audio/"
-MAX_WAIT_S = 60.0
-POLL_INTERVAL_S = 0.6
+MAX_WAIT_S = 45.0
+# Aggressive polling so end-to-end latency on a 5-10s clip is closer to 4-6s.
+# AWS Transcribe doesn't charge per get_transcription_job poll.
+POLL_INTERVAL_INITIAL_S = 0.25
+POLL_INTERVAL_MAX_S = 1.0
+DEFAULT_LANGUAGE = "en-US"
 
 
 def _clients():
@@ -101,8 +105,15 @@ def _ensure_bucket() -> str:
         return _bucket
 
 
-def transcribe_audio(audio_bytes: bytes, media_format: str = "webm") -> dict[str, Any]:
+def transcribe_audio(
+    audio_bytes: bytes,
+    media_format: str = "webm",
+    language_code: str = DEFAULT_LANGUAGE,
+) -> dict[str, Any]:
     """Upload audio → start Transcribe job → poll until done → return transcript.
+
+    Forces a known language (default `en-US`) instead of letting AWS auto-detect,
+    which saves 1–2 s of pre-processing latency per clip.
 
     Returns {"text": str, "language": str|None, "confidence": float|None,
              "duration_s": float|None, "job_name": str}.
@@ -120,10 +131,11 @@ def transcribe_audio(audio_bytes: bytes, media_format: str = "webm") -> dict[str
         TranscriptionJobName=job_name,
         Media={"MediaFileUri": f"s3://{bucket}/{key}"},
         MediaFormat=media_format,
-        IdentifyLanguage=True,
+        LanguageCode=language_code,
     )
 
     deadline = time.time() + MAX_WAIT_S
+    interval = POLL_INTERVAL_INITIAL_S
     while time.time() < deadline:
         resp = transcribe.get_transcription_job(TranscriptionJobName=job_name)
         job = resp["TranscriptionJob"]
@@ -135,14 +147,16 @@ def transcribe_audio(audio_bytes: bytes, media_format: str = "webm") -> dict[str
             text = transcripts[0].get("transcript", "") if transcripts else ""
             return {
                 "text": text.strip(),
-                "language": job.get("LanguageCode"),
+                "language": job.get("LanguageCode") or language_code,
                 "confidence": _avg_confidence(data),
                 "duration_s": _duration(data),
                 "job_name": job_name,
             }
         if status == "FAILED":
             raise RuntimeError(job.get("FailureReason", "transcription failed"))
-        time.sleep(POLL_INTERVAL_S)
+        time.sleep(interval)
+        # Slow polls down a bit so we don't hammer Transcribe for a long-running job.
+        interval = min(POLL_INTERVAL_MAX_S, interval * 1.4)
     raise TimeoutError(f"transcription did not finish in {MAX_WAIT_S:.0f}s")
 
 

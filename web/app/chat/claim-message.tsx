@@ -1,34 +1,22 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 import { ProcessingCard, DecisionCard, type SubmitStep } from "../claim/decision";
-import type { ClaimResponse, Coverage } from "@/lib/claim";
+import type { ClaimResponse } from "@/lib/claim";
+import Waveform from "./waveform";
 
 export type ClaimPhase =
-  | { kind: "coverage" }
-  | { kind: "photo"; coverage: Coverage }
-  | { kind: "voice"; coverage: Coverage }
-  | { kind: "voiceRecording"; coverage: Coverage; elapsed: number }
-  | { kind: "processing"; coverage: Coverage; step: SubmitStep }
+  | { kind: "voice" }
+  | { kind: "voiceRecording"; elapsed: number }
+  | { kind: "transcribing" }
+  | { kind: "photo" }
+  | { kind: "processing"; step: SubmitStep }
   | { kind: "decided"; result: ClaimResponse }
   | { kind: "error"; error: string };
 
-const COVERAGE_OPTIONS: { id: Coverage; label: string; lead: string }[] = [
-  { id: "phone", label: "Phone or device", lead: "phone insurance" },
-  { id: "travel", label: "Travel", lead: "travel insurance" },
-  { id: "default", label: "Something else", lead: "your bunq policy" },
-];
-
-const COVERAGE_LEAD: Record<Coverage, string> = {
-  phone: "phone insurance",
-  travel: "travel insurance",
-  default: "your bunq policy",
-};
-
 export default function ClaimMessage({
   phase,
-  onCoverage,
+  recordingStream,
   onPickPhoto,
   onStartVoice,
   onStopVoice,
@@ -37,7 +25,7 @@ export default function ClaimMessage({
   voiceMaxSeconds,
 }: {
   phase: ClaimPhase;
-  onCoverage: (c: Coverage) => void;
+  recordingStream: MediaStream | null;
   onPickPhoto: () => void;
   onStartVoice: () => void;
   onStopVoice: () => void;
@@ -49,24 +37,28 @@ export default function ClaimMessage({
     <div className="flex items-start gap-3">
       <Avatar />
       <div className="flex-1 min-w-0 space-y-3 pt-0.5">
-        {phase.kind === "coverage" && <CoverageCard onPick={onCoverage} />}
-        {phase.kind === "photo" && (
-          <PhotoCard coverage={phase.coverage} onPick={onPickPhoto} />
-        )}
         {phase.kind === "voice" && (
-          <VoiceCard coverage={phase.coverage} onStart={onStartVoice} state="idle" elapsed={0} max={voiceMaxSeconds} />
+          <VoiceCard
+            onStart={onStartVoice}
+            state="idle"
+            elapsed={0}
+            max={voiceMaxSeconds}
+            stream={null}
+          />
         )}
         {phase.kind === "voiceRecording" && (
           <VoiceCard
-            coverage={phase.coverage}
             onStart={onStartVoice}
             onStop={onStopVoice}
             onCancel={onCancelVoice}
             state="recording"
             elapsed={phase.elapsed}
             max={voiceMaxSeconds}
+            stream={recordingStream}
           />
         )}
+        {phase.kind === "transcribing" && <TranscribingCard />}
+        {phase.kind === "photo" && <PhotoCard onPick={onPickPhoto} />}
         {phase.kind === "processing" && <ProcessingChat step={phase.step} />}
         {phase.kind === "decided" && (
           <DecisionInline result={phase.result} onNewClaim={onNewClaim} />
@@ -93,32 +85,11 @@ function Bubble({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CoverageCard({ onPick }: { onPick: (c: Coverage) => void }) {
+function PhotoCard({ onPick }: { onPick: () => void }) {
   return (
     <>
       <Bubble>
-        Sure — what kind of claim is it?
-      </Bubble>
-      <div className="flex flex-wrap gap-2">
-        {COVERAGE_OPTIONS.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => onPick(c.id)}
-            className="inline-flex h-9 items-center rounded-full border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-medium text-foreground hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors"
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function PhotoCard({ coverage, onPick }: { coverage: Coverage; onPick: () => void }) {
-  return (
-    <>
-      <Bubble>
-        Got it — {COVERAGE_LEAD[coverage]}. <strong>Take a photo</strong> of the damage, the receipt, or the delay notice.
+        Got it. Now <strong>send me a photo</strong> of the damage, the receipt, or the delay notice — so I can take a look.
       </Bubble>
       <button
         onClick={onPick}
@@ -142,7 +113,7 @@ function PhotoCard({ coverage, onPick }: { coverage: Coverage; onPick: () => voi
             <circle cx="12" cy="13" r="3.5" />
           </svg>
         </span>
-        <span className="font-medium">Take a photo</span>
+        <span className="font-medium">Send a photo</span>
         <span className="text-muted text-xs ml-auto group-hover:text-foreground transition-colors">
           camera or upload
         </span>
@@ -151,84 +122,121 @@ function PhotoCard({ coverage, onPick }: { coverage: Coverage; onPick: () => voi
   );
 }
 
+function TranscribingCard() {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 flex items-center gap-3 text-sm">
+      <span className="inline-flex items-center gap-1 text-muted">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse [animation-delay:200ms]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse [animation-delay:400ms]" />
+      </span>
+      <span className="text-muted">Transcribing what you said…</span>
+    </div>
+  );
+}
+
 function VoiceCard({
-  coverage,
   onStart,
   onStop,
   onCancel,
   state,
   elapsed,
   max,
+  stream,
 }: {
-  coverage: Coverage;
   onStart: () => void;
   onStop?: () => void;
   onCancel?: () => void;
   state: "idle" | "recording";
   elapsed: number;
   max: number;
+  stream: MediaStream | null;
 }) {
   const remaining = Math.max(0, max - elapsed);
+  const recording = state === "recording";
   return (
     <>
       <Bubble>
-        Now <strong>tell me what happened</strong> — when, where, and what it cost. Up to {max} seconds.
+        Hey — <strong>what&apos;s going on?</strong> Tell me what happened, when, and what it cost.
+        Up to {max} seconds.
       </Bubble>
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={state === "recording" ? onStop : onStart}
-          aria-label={state === "recording" ? "Stop recording" : "Start recording"}
-          className={`relative h-14 w-14 rounded-full flex items-center justify-center text-[var(--accent-contrast)] transition-transform shrink-0 ${
-            state === "recording"
-              ? "bg-accent active:scale-95"
-              : "bg-accent hover:bg-accent-hover"
-          }`}
-        >
-          {state === "recording" && (
-            <span
-              className="absolute inset-0 rounded-full bg-accent animate-ping opacity-40"
-              aria-hidden
-            />
-          )}
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="relative"
-            aria-hidden
-          >
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5 11a7 7 0 0 0 14 0" />
-            <path d="M12 18v3" />
-          </svg>
-        </button>
-        <div className="flex-1 min-w-0">
-          {state === "recording" ? (
-            <>
-              <p className="text-lg font-semibold tabular-nums">{elapsed.toFixed(1)}s</p>
-              <p className="text-xs text-muted tabular-nums">auto-stops in {remaining.toFixed(0)}s</p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium">Tap to record</p>
-              <p className="text-xs text-muted">{COVERAGE_LEAD[coverage]} · {max}s max</p>
-            </>
-          )}
-        </div>
-        {state === "recording" && onCancel && (
+      <div
+        className={`rounded-2xl border transition-colors p-5 flex flex-col gap-4 ${
+          recording
+            ? "border-[var(--accent-border)] bg-accent text-[var(--accent-contrast)]"
+            : "border-[var(--border)] bg-[var(--card)]"
+        }`}
+      >
+        <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={onCancel}
-            className="text-xs text-muted hover:text-foreground transition-colors px-2"
+            onClick={recording ? onStop : onStart}
+            aria-label={recording ? "Stop recording" : "Start recording"}
+            className={`relative h-14 w-14 rounded-full flex items-center justify-center transition-transform shrink-0 ${
+              recording
+                ? "bg-[var(--accent-contrast)] text-accent active:scale-95"
+                : "bg-accent text-[var(--accent-contrast)] hover:bg-accent-hover"
+            }`}
           >
-            cancel
+            {recording && (
+              <span
+                className="absolute inset-0 rounded-full bg-[var(--accent-contrast)] animate-ping opacity-30"
+                aria-hidden
+              />
+            )}
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="relative"
+              aria-hidden
+            >
+              {recording ? (
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              ) : (
+                <>
+                  <rect x="9" y="3" width="6" height="11" rx="3" />
+                  <path d="M5 11a7 7 0 0 0 14 0" />
+                  <path d="M12 18v3" />
+                </>
+              )}
+            </svg>
           </button>
+          <div className="flex-1 min-w-0">
+            {recording ? (
+              <>
+                <p className="text-lg font-semibold tabular-nums">{elapsed.toFixed(1)}s</p>
+                <p className="text-xs opacity-80 tabular-nums">
+                  auto-stops in {remaining.toFixed(0)}s · tap square to stop
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium">Tap and start talking</p>
+                <p className="text-xs text-muted">{max}s max · I&apos;m listening</p>
+              </>
+            )}
+          </div>
+          {recording && onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-xs opacity-80 hover:opacity-100 transition-opacity px-2"
+            >
+              cancel
+            </button>
+          )}
+        </div>
+        {recording && (
+          <Waveform
+            stream={stream}
+            barClassName="bg-[var(--accent-contrast)]/85"
+          />
         )}
       </div>
     </>
