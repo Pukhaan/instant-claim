@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import bunq_service
 from .config import get_settings
 from .routes import chat as chat_routes
+from .routes import receipt as receipt_routes
 
 
 @asynccontextmanager
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
         return bunq_service.request_sandbox_money(amount_eur)
 
     app.include_router(chat_routes.router)
+    app.include_router(receipt_routes.router)
 
     return app
 

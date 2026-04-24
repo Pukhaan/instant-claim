@@ -27,6 +27,15 @@ type Transaction = {
   sub_type: string;
 };
 
+type Enrichment = {
+  payment_id: number;
+  merchant?: string;
+  category?: string;
+  total_eur?: number;
+};
+
+type Enrichments = Record<string, Enrichment>;
+
 const API = process.env.API_BASE_URL || "http://localhost:8000";
 
 async function fetchJson<T>(path: string): Promise<T | null> {
@@ -43,9 +52,11 @@ export default async function Dashboard() {
   const health = await fetchJson<Health>("/health");
   const accounts = (await fetchJson<Account[]>("/accounts")) ?? [];
   const primary = accounts[0];
-  const transactions = primary
-    ? (await fetchJson<Transaction[]>(`/accounts/${primary.id}/transactions?count=6`)) ?? []
-    : [];
+  const [transactions, enrichments] = await Promise.all([
+    primary ? (fetchJson<Transaction[]>(`/accounts/${primary.id}/transactions?count=6`)) : Promise.resolve([]),
+    fetchJson<Enrichments>("/enrichments"),
+  ]);
+  const enrichmentsMap = enrichments ?? {};
 
   if (!health?.ok) {
     return (
@@ -70,7 +81,7 @@ export default async function Dashboard() {
         <ActionCard anthropicReady={Boolean(health.anthropic_configured)} />
       </div>
 
-      <TransactionsTable transactions={transactions} />
+      <TransactionsTable transactions={transactions ?? []} enrichments={enrichmentsMap} />
     </div>
   );
 }
@@ -130,14 +141,20 @@ function ActionCard({ anthropicReady }: { anthropicReady: boolean }) {
       {anthropicReady ? (
         <>
           <p className="text-sm text-muted leading-relaxed">
-            Ask about balances, move money, or split a bonus in plain language.
+            Ask about balances, move money, split a bonus, or scan a receipt.
           </p>
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <a
               href="/chat"
               className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-black transition-opacity hover:opacity-90"
             >
               Open chat
+            </a>
+            <a
+              href="/receipt"
+              className="inline-flex h-9 items-center rounded-md border border-[var(--border)] px-4 text-sm font-medium hover:border-accent/60 transition-colors"
+            >
+              Scan receipt
             </a>
             <TopUpButton />
           </div>
@@ -146,7 +163,7 @@ function ActionCard({ anthropicReady }: { anthropicReady: boolean }) {
         <>
           <p className="text-sm text-muted leading-relaxed">
             Set <span className="font-mono text-xs">ANTHROPIC_API_KEY</span> in{" "}
-            <span className="font-mono text-xs">api/.env</span> and restart the backend to enable chat.
+            <span className="font-mono text-xs">api/.env</span> and restart the backend to enable chat and receipts.
           </p>
           <div className="mt-4">
             <TopUpButton />
@@ -157,7 +174,13 @@ function ActionCard({ anthropicReady }: { anthropicReady: boolean }) {
   );
 }
 
-function TransactionsTable({ transactions }: { transactions: Transaction[] }) {
+function TransactionsTable({
+  transactions,
+  enrichments,
+}: {
+  transactions: Transaction[];
+  enrichments: Enrichments;
+}) {
   return (
     <Card title="Recent transactions">
       {transactions.length === 0 ? (
@@ -169,25 +192,38 @@ function TransactionsTable({ transactions }: { transactions: Transaction[] }) {
               <tr className="text-muted text-xs uppercase tracking-wide">
                 <th className="text-left font-medium px-6 py-2">When</th>
                 <th className="text-left font-medium px-6 py-2">Counterparty</th>
-                <th className="text-left font-medium px-6 py-2">Description</th>
+                <th className="text-left font-medium px-6 py-2">Detail</th>
                 <th className="text-right font-medium px-6 py-2">Amount</th>
               </tr>
             </thead>
             <tbody>
-              {transactions.map((t) => (
-                <tr key={t.id} className="border-t border-[var(--border)]">
-                  <td className="px-6 py-2.5 tabular-nums text-muted">{formatDate(t.created)}</td>
-                  <td className="px-6 py-2.5 truncate max-w-[180px]">{t.counterparty ?? "—"}</td>
-                  <td className="px-6 py-2.5 truncate max-w-[260px] text-muted">{t.description}</td>
-                  <td
-                    className={`px-6 py-2.5 text-right tabular-nums font-medium ${
-                      (t.amount ?? 0) < 0 ? "" : "text-accent"
-                    }`}
-                  >
-                    {formatEUR(t.amount)}
-                  </td>
-                </tr>
-              ))}
+              {transactions.map((t) => {
+                const enr = enrichments[String(t.id)];
+                const display = enr?.merchant || t.counterparty || "—";
+                return (
+                  <tr key={t.id} className="border-t border-[var(--border)]">
+                    <td className="px-6 py-2.5 tabular-nums text-muted">{formatDate(t.created)}</td>
+                    <td className="px-6 py-2.5 truncate max-w-[180px]">{display}</td>
+                    <td className="px-6 py-2.5 truncate max-w-[260px]">
+                      {enr?.category ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs text-foreground">
+                          <span className="h-1 w-1 rounded-full bg-accent" aria-hidden />
+                          {enr.category}
+                        </span>
+                      ) : (
+                        <span className="text-muted">{t.description || "—"}</span>
+                      )}
+                    </td>
+                    <td
+                      className={`px-6 py-2.5 text-right tabular-nums font-medium ${
+                        (t.amount ?? 0) < 0 ? "" : "text-accent"
+                      }`}
+                    >
+                      {formatEUR(t.amount)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

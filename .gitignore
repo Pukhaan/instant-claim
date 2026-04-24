@@ -30,6 +30,10 @@ bunq-session.json
 *.key
 !public/**/*.pem
 
+# teller local artifacts
+enrichments.json
+receipts_uploaded/
+
 # python
 __pycache__/
 *.pyc
