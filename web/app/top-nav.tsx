@@ -1,15 +1,17 @@
 import Link from "next/link";
 
-type Section = "dashboard" | "chat" | "receipt" | "sandbox";
+type Section = "home" | "dashboard" | "receipt" | "sandbox" | "chat";
 
 const LINKS: { id: Section; label: string; href: string }[] = [
-  { id: "dashboard", label: "Dashboard", href: "/" },
-  { id: "chat", label: "Chat", href: "/chat" },
+  { id: "home", label: "Chat", href: "/" },
+  { id: "dashboard", label: "Dashboard", href: "/dashboard" },
   { id: "receipt", label: "Receipts", href: "/receipt" },
   { id: "sandbox", label: "Sandbox", href: "/sandbox" },
 ];
 
 export default function TopNav({ current }: { current: Section }) {
+  // /chat route still exists as a deep-link alias → highlight the Chat tab.
+  const active: Section = current === "chat" ? "home" : current;
   return (
     <header className="flex items-center justify-between mb-10">
       <Link href="/" className="flex items-baseline gap-2.5 group">
@@ -22,13 +24,13 @@ export default function TopNav({ current }: { current: Section }) {
 
       <nav className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-1 text-sm">
         {LINKS.map((l) => {
-          const active = l.id === current;
+          const isActive = l.id === active;
           return (
             <Link
               key={l.id}
               href={l.href}
               className={
-                active
+                isActive
                   ? "rounded-lg bg-[var(--input)] px-3 py-1.5 font-medium text-foreground"
                   : "rounded-lg px-3 py-1.5 text-muted hover:text-foreground transition-colors"
               }

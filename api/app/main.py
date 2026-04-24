@@ -11,6 +11,7 @@ from . import aws_probe, bunq_service
 from .config import get_settings
 from .routes import chat as chat_routes
 from .routes import receipt as receipt_routes
+from .routes import voice as voice_routes
 
 
 @asynccontextmanager
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
 
     app.include_router(chat_routes.router)
     app.include_router(receipt_routes.router)
+    app.include_router(voice_routes.router)
 
     return app
 
