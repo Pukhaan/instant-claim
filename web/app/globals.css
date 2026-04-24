@@ -1,34 +1,110 @@
 @import "tailwindcss";
 
+/* Tokens derived from doc.bunq.com — see docs/scraped/doc-bunq-com/design-tokens.json */
+
 :root {
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --muted: #71717a;
-  --border: #e4e4e7;
-  --accent: #00e676;
+  /* Neutral ramp (warm-tinted greys, bunq's --tint-* in light mode) */
+  --tint-1: #ffffff;
+  --tint-2: #fbf9f9;
+  --tint-3: #faf7f5;
+  --tint-4: #f6f1ef;
+  --tint-5: #f2ece9;
+  --tint-6: #ece4e0;
+  --tint-7: #e0d7d3;
+  --tint-8: #d5cac5;
+  --tint-9: #9a7e71;
+  --tint-10: #8e7266;
+  --tint-11: #776b67;
+  --tint-12: #1f1c1c;
+
+  /* Accent ramp (bunq orange) */
+  --primary-1: #ffffff;
+  --primary-3: #fff4ed;
+  --primary-4: #ffede2;
+  --primary-8: #f5bfa7;
+  --primary-9: #ff6a00;
+  --primary-10: #d33f00;
+  --primary-11: #955f46;
+  --primary-12: #251a15;
+
+  /* Semantic aliases */
+  --background: var(--tint-2);
+  --card: var(--tint-1);
+  --foreground: var(--tint-12);
+  --muted: var(--tint-11);
+  --muted-2: var(--tint-10);
+  --border: var(--tint-6);
+  --border-strong: var(--tint-7);
+  --input: var(--tint-3);
+  --accent: var(--primary-9);
+  --accent-hover: var(--primary-10);
+  --accent-contrast: #ffffff;
+  --accent-subtle: var(--primary-3);
+  --accent-border: var(--primary-8);
+  --danger: #d32f2f;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --muted: #a1a1aa;
-    --border: #262629;
+    --tint-1: #1d1d1d;
+    --tint-2: #232222;
+    --tint-3: #2d2c2b;
+    --tint-4: #312f2e;
+    --tint-5: #373534;
+    --tint-6: #3c3937;
+    --tint-7: #464341;
+    --tint-8: #514d4b;
+    --tint-9: #90817b;
+    --tint-10: #9c8d86;
+    --tint-11: #c5bfbc;
+    --tint-12: #fffffe;
+
+    --primary-3: #352924;
+    --primary-4: #3d2b23;
+    --primary-8: #6e412c;
+    --primary-9: #ff6a00;
+    --primary-10: #ee5a00;
+    --primary-11: #edb095;
+    --primary-12: #fffbf4;
+
+    --background: var(--tint-1);
+    --card: var(--tint-2);
+    --foreground: var(--tint-12);
+    --muted: var(--tint-11);
+    --muted-2: var(--tint-10);
+    --border: var(--tint-6);
+    --border-strong: var(--tint-7);
+    --input: var(--tint-3);
+    --accent: var(--primary-9);
+    --accent-hover: var(--primary-10);
+    --accent-contrast: #ffffff;
+    --accent-subtle: var(--primary-4);
+    --accent-border: var(--primary-8);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv11", "ss01";
 }

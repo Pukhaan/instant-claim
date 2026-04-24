@@ -17,11 +17,17 @@ class Settings(BaseSettings):
 
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
-    aws_region: str = "eu-central-1"
+    aws_session_token: str = ""
+    aws_region: str = "us-east-1"
+    aws_default_region: str = "us-east-1"
     aws_s3_bucket: str = ""
 
     api_port: int = 8000
     cors_origins: str = "http://localhost:3000"
+
+    # Directory for persisted runtime state (bunq context, sandbox key, enrichments).
+    # Local default: current working dir. On Fly.io we mount a persistent volume here.
+    state_dir: str = "."
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -17,25 +17,39 @@ from .config import get_settings
 
 _client: BunqClient | None = None
 _client_lock = threading.Lock()
-_SANDBOX_KEY_FILE = Path(".bunq_sandbox_key")
+
+
+def _state_dir() -> Path:
+    d = Path(get_settings().state_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _sandbox_key_file() -> Path:
+    return _state_dir() / ".bunq_sandbox_key"
+
+
+def _context_file() -> Path:
+    return _state_dir() / "bunq_context.json"
 
 
 def _resolve_sandbox_api_key(env_key: str) -> str:
     """Returns the sandbox API key, auto-creating + persisting one if needed.
 
-    Precedence: env var → .bunq_sandbox_key file → create a new sandbox user.
+    Precedence: env var → {STATE_DIR}/.bunq_sandbox_key → create a new sandbox user.
     Caching the generated key means repeated restarts reuse the same sandbox
     account (and transactions), which is what you want during dev and demos.
     """
     if env_key:
         return env_key
-    if _SANDBOX_KEY_FILE.exists():
-        cached = _SANDBOX_KEY_FILE.read_text().strip()
+    key_file = _sandbox_key_file()
+    if key_file.exists():
+        cached = key_file.read_text().strip()
         if cached:
             return cached
     new_key = BunqClient.create_sandbox_user()
-    _SANDBOX_KEY_FILE.write_text(new_key)
-    print(f"[bunq] created sandbox user, key cached to {_SANDBOX_KEY_FILE}")
+    key_file.write_text(new_key)
+    print(f"[bunq] created sandbox user, key cached to {key_file}")
     return new_key
 
 
@@ -49,7 +63,11 @@ def get_client() -> BunqClient:
             return _client
         settings = get_settings()
         api_key = _resolve_sandbox_api_key(settings.bunq_api_key.strip())
-        client = BunqClient(api_key=api_key, sandbox=settings.bunq_sandbox)
+        client = BunqClient(
+            api_key=api_key,
+            sandbox=settings.bunq_sandbox,
+            context_file=_context_file(),
+        )
         client.authenticate()
         _client = client
         return client

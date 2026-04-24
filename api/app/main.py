@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import bunq_service
+from . import aws_probe, bunq_service
 from .config import get_settings
 from .routes import chat as chat_routes
 from .routes import receipt as receipt_routes
@@ -40,14 +40,23 @@ def create_app() -> FastAPI:
         try:
             me = bunq_service.whoami()
             accounts = bunq_service.list_accounts()
+            aws = aws_probe.probe()
+            aws_services = {k: bool(v.get("ok")) for k, v in (aws.get("services") or {}).items()}
             return {
                 "ok": True,
                 "bunq": {"user": me, "accounts_count": len(accounts)},
                 "anthropic_configured": bool(settings.anthropic_api_key),
-                "aws_configured": bool(settings.aws_access_key_id and settings.aws_s3_bucket),
+                "aws_configured": bool(aws.get("has_credentials")),
+                "aws_region": aws.get("region"),
+                "aws_identity": aws.get("identity"),
+                "aws_services": aws_services,
             }
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"bunq unavailable: {exc!r}") from exc
+
+    @app.get("/aws/probe")
+    def aws_probe_route(force: bool = False) -> dict:
+        return aws_probe.probe(force=force)
 
     @app.get("/accounts")
     def accounts() -> list[dict]:

@@ -6,6 +6,7 @@ type Health = {
   bunq?: { user: { display_name: string | null; user_id: number }; accounts_count: number };
   anthropic_configured?: boolean;
   aws_configured?: boolean;
+  aws_services?: Record<string, boolean>;
 };
 
 type Account = {
@@ -53,29 +54,31 @@ export default async function Dashboard() {
   const accounts = (await fetchJson<Account[]>("/accounts")) ?? [];
   const primary = accounts[0];
   const [transactions, enrichments] = await Promise.all([
-    primary ? (fetchJson<Transaction[]>(`/accounts/${primary.id}/transactions?count=6`)) : Promise.resolve([]),
+    primary
+      ? fetchJson<Transaction[]>(`/accounts/${primary.id}/transactions?count=6`)
+      : Promise.resolve([]),
     fetchJson<Enrichments>("/enrichments"),
   ]);
   const enrichmentsMap = enrichments ?? {};
 
   if (!health?.ok) {
     return (
-      <div className="rounded-xl border border-[var(--border)] p-6">
+      <Card>
         <h3 className="font-medium">API unreachable</h3>
-        <p className="text-muted text-sm mt-2">
+        <p className="text-muted text-sm mt-2 leading-relaxed">
           Start the backend with{" "}
-          <code className="font-mono text-xs bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded">
+          <code className="font-mono text-xs bg-[var(--input)] px-1.5 py-0.5 rounded">
             uvicorn app.main:app --reload --port 8000
           </code>{" "}
           from the <code className="font-mono text-xs">api/</code> directory.
         </p>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-3">
+    <div className="space-y-8">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatusCard health={health} />
         <AccountCard account={primary} accountsTotal={accounts.length} />
         <ActionCard anthropicReady={Boolean(health.anthropic_configured)} />
@@ -87,18 +90,23 @@ export default async function Dashboard() {
 }
 
 function StatusCard({ health }: { health: Health }) {
-  const items = [
+  const aws = health.aws_services ?? {};
+  const primary = [
     { label: "bunq sandbox", ok: Boolean(health.bunq) },
     { label: "Anthropic", ok: Boolean(health.anthropic_configured) },
-    { label: "AWS (S3/Transcribe/Polly)", ok: Boolean(health.aws_configured) },
+    { label: "AWS credentials", ok: Boolean(health.aws_configured) },
   ];
+  const awsItems = (["bedrock", "transcribe", "polly", "s3"] as const).map((k) => ({
+    label: k,
+    ok: Boolean(aws[k]),
+  }));
   return (
     <Card title="Status">
-      <ul className="text-sm space-y-2">
-        {items.map((i) => (
-          <li key={i.label} className="flex items-center gap-2">
+      <ul className="text-sm space-y-2.5">
+        {primary.map((i) => (
+          <li key={i.label} className="flex items-center gap-2.5">
             <span
-              className={`h-1.5 w-1.5 rounded-full ${i.ok ? "bg-accent" : "bg-zinc-400"}`}
+              className={`h-1.5 w-1.5 rounded-full ${i.ok ? "bg-accent" : "bg-[var(--tint-8)]"}`}
               aria-hidden
             />
             <span className={i.ok ? "" : "text-muted"}>{i.label}</span>
@@ -108,6 +116,20 @@ function StatusCard({ health }: { health: Health }) {
           </li>
         ))}
       </ul>
+      {health.aws_configured && (
+        <ul className="mt-4 pt-3 border-t border-[var(--border)] text-xs space-y-2 text-muted">
+          {awsItems.map((i) => (
+            <li key={i.label} className="flex items-center gap-2.5">
+              <span
+                className={`h-1 w-1 rounded-full ${i.ok ? "bg-accent" : "bg-[var(--tint-7)]"}`}
+                aria-hidden
+              />
+              <span className="lowercase">{i.label}</span>
+              <span className="ml-auto tabular-nums">{i.ok ? "ok" : "denied"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
@@ -119,13 +141,22 @@ function AccountCard({
   account: Account | undefined;
   accountsTotal: number;
 }) {
-  if (!account) return <Card title="No account">No active monetary account found.</Card>;
+  if (!account) {
+    return (
+      <Card title="No account">
+        <p className="text-sm text-muted leading-relaxed">No active monetary account found.</p>
+      </Card>
+    );
+  }
   return (
     <Card title={account.description || "Account"}>
       <div className="text-3xl font-semibold tabular-nums tracking-tight">
         {formatEUR(account.balance)}
       </div>
-      <div className="mt-2 text-xs text-muted font-mono truncate" title={account.iban ?? ""}>
+      <div
+        className="mt-2 text-xs text-muted font-mono truncate"
+        title={account.iban ?? ""}
+      >
         {account.iban ?? "—"}
       </div>
       <div className="mt-3 text-xs text-muted">
@@ -146,13 +177,13 @@ function ActionCard({ anthropicReady }: { anthropicReady: boolean }) {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <a
               href="/chat"
-              className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-black transition-opacity hover:opacity-90"
+              className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] hover:bg-accent-hover transition-colors"
             >
               Open chat
             </a>
             <a
               href="/receipt"
-              className="inline-flex h-9 items-center rounded-md border border-[var(--border)] px-4 text-sm font-medium hover:border-accent/60 transition-colors"
+              className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] px-4 text-sm font-medium hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors"
             >
               Scan receipt
             </a>
@@ -163,7 +194,7 @@ function ActionCard({ anthropicReady }: { anthropicReady: boolean }) {
         <>
           <p className="text-sm text-muted leading-relaxed">
             Set <span className="font-mono text-xs">ANTHROPIC_API_KEY</span> in{" "}
-            <span className="font-mono text-xs">api/.env</span> and restart the backend to enable chat and receipts.
+            <span className="font-mono text-xs">api/.env</span> to enable chat and receipts.
           </p>
           <div className="mt-4">
             <TopUpButton />
@@ -182,18 +213,18 @@ function TransactionsTable({
   enrichments: Enrichments;
 }) {
   return (
-    <Card title="Recent transactions">
+    <Card title="Recent transactions" compact>
       {transactions.length === 0 ? (
-        <p className="text-sm text-muted">No transactions yet. Top up to see one appear.</p>
+        <p className="text-sm text-muted px-5 pb-5">No transactions yet. Top up to see one appear.</p>
       ) : (
-        <div className="overflow-x-auto -mx-6">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-muted text-xs uppercase tracking-wide">
-                <th className="text-left font-medium px-6 py-2">When</th>
-                <th className="text-left font-medium px-6 py-2">Counterparty</th>
-                <th className="text-left font-medium px-6 py-2">Detail</th>
-                <th className="text-right font-medium px-6 py-2">Amount</th>
+              <tr className="text-muted text-xs uppercase tracking-wide border-b border-[var(--border)]">
+                <th className="text-left font-medium px-5 py-3">When</th>
+                <th className="text-left font-medium px-5 py-3">Counterparty</th>
+                <th className="text-left font-medium px-5 py-3">Detail</th>
+                <th className="text-right font-medium px-5 py-3">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -201,12 +232,15 @@ function TransactionsTable({
                 const enr = enrichments[String(t.id)];
                 const display = enr?.merchant || t.counterparty || "—";
                 return (
-                  <tr key={t.id} className="border-t border-[var(--border)]">
-                    <td className="px-6 py-2.5 tabular-nums text-muted">{formatDate(t.created)}</td>
-                    <td className="px-6 py-2.5 truncate max-w-[180px]">{display}</td>
-                    <td className="px-6 py-2.5 truncate max-w-[260px]">
+                  <tr
+                    key={t.id}
+                    className="border-b last:border-b-0 border-[var(--border)] hover:bg-[var(--tint-3)] transition-colors"
+                  >
+                    <td className="px-5 py-3 tabular-nums text-muted">{formatDate(t.created)}</td>
+                    <td className="px-5 py-3 truncate max-w-[180px]">{display}</td>
+                    <td className="px-5 py-3 truncate max-w-[260px]">
                       {enr?.category ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs text-foreground">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-subtle)] px-2.5 py-0.5 text-xs text-foreground">
                           <span className="h-1 w-1 rounded-full bg-accent" aria-hidden />
                           {enr.category}
                         </span>
@@ -215,7 +249,7 @@ function TransactionsTable({
                       )}
                     </td>
                     <td
-                      className={`px-6 py-2.5 text-right tabular-nums font-medium ${
+                      className={`px-5 py-3 text-right tabular-nums font-medium ${
                         (t.amount ?? 0) < 0 ? "" : "text-accent"
                       }`}
                     >
@@ -232,13 +266,27 @@ function TransactionsTable({
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  children,
+  compact,
+}: {
+  title?: string;
+  children: React.ReactNode;
+  compact?: boolean;
+}) {
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-white dark:bg-black p-6">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-muted mb-3">
-        {title}
-      </h3>
-      {children}
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs hover:shadow-sm transition-shadow">
+      {title && (
+        <h3
+          className={`text-xs font-medium uppercase tracking-wider text-muted ${
+            compact ? "px-5 pt-5 pb-3" : "px-5 pt-5"
+          }`}
+        >
+          {title}
+        </h3>
+      )}
+      <div className={compact ? "" : "px-5 pb-5 pt-3"}>{children}</div>
     </section>
   );
 }

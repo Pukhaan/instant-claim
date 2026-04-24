@@ -87,7 +87,7 @@ export default function ChatView() {
       </div>
 
       <form
-        className="sticky bottom-4 flex items-end gap-3 bg-white dark:bg-black rounded-2xl border border-[var(--border)] p-3 shadow-sm"
+        className="sticky bottom-4 flex items-end gap-3 bg-[var(--card)] rounded-2xl border border-[var(--border)] p-3 shadow-sm"
         onSubmit={(e) => {
           e.preventDefault();
           send(input);
@@ -121,7 +121,7 @@ export default function ChatView() {
           <button
             type="submit"
             disabled={isStreaming || !input.trim()}
-            className="inline-flex h-9 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-30"
+            className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] transition-colors hover:bg-accent-hover disabled:opacity-30"
           >
             {isStreaming ? "…" : "Send"}
           </button>
@@ -133,11 +133,11 @@ export default function ChatView() {
 
 function Starters({ onPick }: { onPick: (s: string) => void }) {
   return (
-    <div className="py-16">
-      <h2 className="text-balance text-3xl font-semibold tracking-tight mb-2">
+    <div className="py-12 md:py-16">
+      <h2 className="text-balance text-3xl md:text-4xl font-semibold tracking-tight mb-3 leading-tight">
         What do you want to do with your money?
       </h2>
-      <p className="text-muted text-pretty mb-8">
+      <p className="text-muted text-pretty mb-8 leading-relaxed max-w-xl">
         Teller can list accounts, read transactions, move money between your sub-accounts, and more.
         Try one of these to start.
       </p>
@@ -146,7 +146,7 @@ function Starters({ onPick }: { onPick: (s: string) => void }) {
           <li key={s}>
             <button
               onClick={() => onPick(s)}
-              className="w-full text-left text-sm px-4 py-3 rounded-lg border border-[var(--border)] hover:border-accent/60 hover:bg-accent/5 transition-colors"
+              className="w-full text-left text-sm px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors"
             >
               {s}
             </button>
@@ -161,7 +161,7 @@ function MessageRow({ msg }: { msg: Message }) {
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-foreground text-background px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-accent text-[var(--accent-contrast)] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
           {msg.text}
         </div>
       </div>
@@ -186,18 +186,22 @@ function ToolCallRow({ call }: { call: ToolCall }) {
   const label = humanTool(call.name);
   const status = call.error ? "error" : call.output !== undefined ? "done" : "running";
   return (
-    <details className="group">
-      <summary className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none hover:text-foreground transition-colors list-none">
+    <details className="group rounded-xl border border-[var(--border)] bg-[var(--card)]">
+      <summary className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none hover:text-foreground transition-colors list-none px-3 py-2">
         <span
           className={`h-1.5 w-1.5 rounded-full ${
-            status === "running" ? "bg-zinc-400 animate-pulse" : status === "error" ? "bg-red-500" : "bg-accent"
+            status === "running"
+              ? "bg-[var(--tint-8)] animate-pulse"
+              : status === "error"
+                ? "bg-[var(--danger)]"
+                : "bg-accent"
           }`}
           aria-hidden
         />
-        <span className="tabular-nums">{label}</span>
-        {summarize(call) && <span className="text-muted/70 truncate">· {summarize(call)}</span>}
+        <span className="tabular-nums text-foreground">{label}</span>
+        {summarize(call) && <span className="text-muted truncate">· {summarize(call)}</span>}
       </summary>
-      <pre className="mt-1.5 ml-3.5 text-[11px] leading-relaxed text-muted font-mono bg-black/[.03] dark:bg-white/[.04] rounded-md p-3 overflow-x-auto">
+      <pre className="text-[11px] leading-relaxed text-muted font-mono bg-[var(--input)] rounded-b-xl p-3 overflow-x-auto">
         {JSON.stringify({ input: call.input, output: call.output, error: call.error }, null, 2)}
       </pre>
     </details>

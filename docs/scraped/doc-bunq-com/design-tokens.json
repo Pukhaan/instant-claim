@@ -1,0 +1,94 @@
+{
+  "source": "https://doc.bunq.com/ (GitBook-powered)",
+  "scraped_at": "2026-04-24",
+  "font_family": {
+    "sans": "Inter",
+    "source": "html class='font-Inter'; GitBook's default Inter via next/font"
+  },
+  "radius": {
+    "variant": "rounded-corners",
+    "notes": "Medium radius; html classes 'straight-corners:rounded-none' and 'circular-corners:rounded-3xl' confirm the baseline maps to rounded-xl/2xl on buttons and cards"
+  },
+  "theme_class": "theme-muted no-tint sidebar-filled depth-subtle",
+  "default_appearance": "dark",
+  "light": {
+    "primary": {
+      "1": "#FFFFFF",
+      "2": "#FFF8F4",
+      "3": "#FFF4ED",
+      "4": "#FFEDE2",
+      "5": "#FFE5D8",
+      "6": "#FFDCCB",
+      "7": "#FCCDB9",
+      "8": "#F5BFA7",
+      "9": "#FF6A00",
+      "10": "#D33F00",
+      "11": "#955F46",
+      "12": "#251A15",
+      "original": "#FF6A00"
+    },
+    "tint": {
+      "1": "#FFFFFF",
+      "2": "#FBF9F9",
+      "3": "#FAF7F5",
+      "4": "#F6F1EF",
+      "5": "#F2ECE9",
+      "6": "#ECE4E0",
+      "7": "#E0D7D3",
+      "8": "#D5CAC5",
+      "9": "#9A7E71",
+      "10": "#8E7266",
+      "11": "#776B67",
+      "12": "#1F1C1C",
+      "original": "#787878"
+    }
+  },
+  "dark": {
+    "primary": {
+      "1": "#1D1D1D",
+      "2": "#27211F",
+      "3": "#352924",
+      "4": "#3D2B23",
+      "5": "#472F24",
+      "6": "#4F3123",
+      "7": "#5E3928",
+      "8": "#6E412C",
+      "9": "#FF6A00",
+      "10": "#EE5A00",
+      "11": "#EDB095",
+      "12": "#FFFBF4",
+      "original": "#FF6A00"
+    },
+    "tint": {
+      "1": "#1D1D1D",
+      "2": "#232222",
+      "3": "#2D2C2B",
+      "4": "#312F2E",
+      "5": "#373534",
+      "6": "#3C3937",
+      "7": "#464341",
+      "8": "#514D4B",
+      "9": "#90817B",
+      "10": "#9C8D86",
+      "11": "#C5BFBC",
+      "12": "#FFFFFE",
+      "original": "#787878"
+    }
+  },
+  "token_usage": {
+    "app_background": "tint-1",
+    "card_background": "tint-1",
+    "subtle_background": "tint-2 or tint-3",
+    "hover_background": "tint-4",
+    "border_subtle": "tint-6",
+    "border": "tint-7",
+    "border_hover": "tint-8",
+    "muted_text": "tint-11",
+    "foreground": "tint-12",
+    "accent": "primary-9 (#FF6A00)",
+    "accent_hover": "primary-10",
+    "accent_foreground": "contrast-primary-9 (white)",
+    "accent_subtle": "primary-3 (light) or primary-4 (dark) for soft fills",
+    "accent_border": "primary-8"
+  }
+}

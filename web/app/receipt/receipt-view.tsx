@@ -107,9 +107,13 @@ export default function ReceiptView() {
         <DropZone onFile={pickImage} onButtonClick={() => fileInputRef.current?.click()} />
       ) : (
         <div className="grid gap-6 md:grid-cols-[260px_1fr]">
-          <figure className="rounded-xl border border-[var(--border)] overflow-hidden bg-white dark:bg-black">
+          <figure className="rounded-2xl border border-[var(--border)] overflow-hidden bg-[var(--card)]">
             {"preview" in stage && stage.preview && (
-              <img src={stage.preview} alt="Receipt preview" className="w-full h-full object-cover max-h-[420px]" />
+              <img
+                src={stage.preview}
+                alt="Receipt preview"
+                className="w-full h-full object-cover max-h-[420px]"
+              />
             )}
           </figure>
 
@@ -164,12 +168,15 @@ function DropZone({
       }}
       className={`rounded-2xl border-2 border-dashed p-12 text-center transition-colors ${
         hover
-          ? "border-accent bg-accent/5"
-          : "border-[var(--border)] hover:border-accent/40"
+          ? "border-accent bg-[var(--accent-subtle)]"
+          : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent-border)]"
       }`}
     >
       <div className="mx-auto max-w-xs space-y-3">
-        <div className="mx-auto h-10 w-10 rounded-full bg-accent/15 flex items-center justify-center text-accent text-lg" aria-hidden>
+        <div
+          className="mx-auto h-10 w-10 rounded-full bg-[var(--accent-subtle)] border border-[var(--accent-border)] flex items-center justify-center text-accent text-lg"
+          aria-hidden
+        >
           +
         </div>
         <p className="text-sm leading-relaxed">
@@ -197,19 +204,23 @@ function PreviewActions({
   onReset: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-5">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
       <h3 className="font-medium">Ready to read</h3>
       <p className="text-sm text-muted mt-1 leading-relaxed">
-        Teller will extract the merchant, total, and items, then try to match the transaction on your bunq account.
+        Teller will extract the merchant, total, and items, then try to match the transaction on
+        your bunq account.
       </p>
       <div className="mt-4 flex items-center gap-3">
         <button
           onClick={onExtract}
-          className="inline-flex h-9 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 transition-opacity"
+          className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] hover:bg-accent-hover transition-colors"
         >
           Extract with Claude
         </button>
-        <button onClick={onReset} className="text-sm text-muted hover:text-foreground transition-colors">
+        <button
+          onClick={onReset}
+          className="text-sm text-muted hover:text-foreground transition-colors"
+        >
           Pick another
         </button>
       </div>
@@ -219,7 +230,7 @@ function PreviewActions({
 
 function ExtractingState() {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-5">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
       <div className="flex items-center gap-2 text-sm">
         <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" aria-hidden />
         <span>Reading the receipt…</span>
@@ -231,7 +242,7 @@ function ExtractingState() {
 
 function SavingState() {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-5">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
       <div className="flex items-center gap-2 text-sm">
         <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" aria-hidden />
         <span>Saving the match…</span>
@@ -253,7 +264,7 @@ function ResultView({
   const hasMatch = match && !("error" in match);
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-[var(--border)] p-5 space-y-3">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs text-muted uppercase tracking-wide">{extracted.category}</p>
@@ -282,7 +293,9 @@ function ResultView({
         )}
 
         {extracted.note && (
-          <p className="text-xs text-muted border-t border-[var(--border)] pt-3">{extracted.note}</p>
+          <p className="text-xs text-muted border-t border-[var(--border)] pt-3">
+            {extracted.note}
+          </p>
         )}
       </div>
 
@@ -304,14 +317,18 @@ function MatchCard({
 }) {
   if (!match) {
     return (
-      <div className="rounded-xl border border-[var(--border)] p-5">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
         <h4 className="font-medium">No matching transaction yet</h4>
         <p className="text-sm text-muted mt-1 leading-relaxed">
-          Teller couldn&apos;t find a recent payment on your bunq account that matches this receipt&apos;s amount
-          (within €0.02, past 14 days). The receipt data is still extracted — you can try another.
+          Teller couldn&apos;t find a recent payment on your bunq account that matches this
+          receipt&apos;s amount (within €0.02, past 14 days). The receipt data is still extracted —
+          you can try another.
         </p>
         <div className="mt-4">
-          <button onClick={onReset} className="text-sm text-muted hover:text-foreground transition-colors">
+          <button
+            onClick={onReset}
+            className="text-sm text-muted hover:text-foreground transition-colors"
+          >
             Pick another
           </button>
         </div>
@@ -321,7 +338,7 @@ function MatchCard({
 
   if ("error" in match) {
     return (
-      <div className="rounded-xl border border-[var(--border)] p-5">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
         <h4 className="font-medium">Match failed</h4>
         <p className="text-sm text-muted mt-1 leading-relaxed">{match.error}</p>
       </div>
@@ -329,7 +346,7 @@ function MatchCard({
   }
 
   return (
-    <div className="rounded-xl border border-accent/60 bg-accent/5 p-5 space-y-3">
+    <div className="rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-subtle)] p-5 space-y-3">
       <div>
         <p className="text-xs text-accent uppercase tracking-wide">Match found</p>
         <h4 className="font-medium mt-0.5">
@@ -339,19 +356,20 @@ function MatchCard({
         <p className="text-xs text-muted tabular-nums mt-0.5">
           {formatDate(match.created)} · payment #{match.payment_id}
         </p>
-        {match.description && (
-          <p className="text-sm mt-2 text-muted">“{match.description}”</p>
-        )}
+        {match.description && <p className="text-sm mt-2 text-muted">“{match.description}”</p>}
       </div>
       <div className="flex items-center gap-3 pt-1">
         <button
           onClick={onConfirm}
           disabled={!hasMatch}
-          className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-black hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] hover:bg-accent-hover transition-colors disabled:opacity-50"
         >
           Confirm match
         </button>
-        <button onClick={onReset} className="text-sm text-muted hover:text-foreground transition-colors">
+        <button
+          onClick={onReset}
+          className="text-sm text-muted hover:text-foreground transition-colors"
+        >
           Pick another
         </button>
       </div>
@@ -362,7 +380,7 @@ function MatchCard({
 function SavedView({ result, onReset }: { result: ProcessResult; onReset: () => void }) {
   const match = result.match && !("error" in result.match) ? result.match : null;
   return (
-    <div className="rounded-xl border border-accent/60 bg-accent/5 p-5 space-y-3">
+    <div className="rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-subtle)] p-5 space-y-3">
       <div>
         <p className="text-xs text-accent uppercase tracking-wide">Saved</p>
         <h4 className="font-medium mt-0.5">
@@ -377,7 +395,7 @@ function SavedView({ result, onReset }: { result: ProcessResult; onReset: () => 
       <div className="flex items-center gap-3 pt-1">
         <button
           onClick={onReset}
-          className="inline-flex h-9 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 transition-opacity"
+          className="inline-flex h-9 items-center rounded-lg bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] hover:bg-accent-hover transition-colors"
         >
           Scan another
         </button>
@@ -391,8 +409,8 @@ function SavedView({ result, onReset }: { result: ProcessResult; onReset: () => 
 
 function ErrorView({ error, onReset }: { error: string; onReset: () => void }) {
   return (
-    <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-5">
-      <h4 className="font-medium text-red-500">Something went wrong</h4>
+    <div className="rounded-2xl border border-[var(--danger)]/40 bg-[var(--danger)]/5 p-5">
+      <h4 className="font-medium text-[var(--danger)]">Something went wrong</h4>
       <pre className="text-xs text-muted mt-2 whitespace-pre-wrap font-mono">{error}</pre>
       <button
         onClick={onReset}

@@ -28,8 +28,13 @@ import anthropic
 from . import bunq_service
 from .config import get_settings
 
-ENRICHMENTS_FILE = Path("enrichments.json")
 _enrichments_lock = threading.Lock()
+
+
+def _enrichments_file() -> Path:
+    d = Path(get_settings().state_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "enrichments.json"
 
 
 # --------------------------------------------------------------------------
@@ -238,16 +243,17 @@ def _days_between(a: datetime | None, b: datetime | None) -> float | None:
 
 
 def _load_all() -> dict[str, dict[str, Any]]:
-    if not ENRICHMENTS_FILE.exists():
+    path = _enrichments_file()
+    if not path.exists():
         return {}
     try:
-        return json.loads(ENRICHMENTS_FILE.read_text())
+        return json.loads(path.read_text())
     except (json.JSONDecodeError, OSError):
         return {}
 
 
 def _save_all(data: dict[str, dict[str, Any]]) -> None:
-    ENRICHMENTS_FILE.write_text(json.dumps(data, indent=2, default=str))
+    _enrichments_file().write_text(json.dumps(data, indent=2, default=str))
 
 
 def list_enrichments() -> dict[str, dict[str, Any]]:

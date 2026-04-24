@@ -21,12 +21,12 @@ export default function TopUpButton() {
   }
 
   return (
-    <div className="mt-4 flex items-center gap-3">
+    <div className="flex items-center gap-3">
       <button
         type="button"
         onClick={topUp}
         disabled={pending}
-        className="inline-flex h-9 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] px-4 text-sm font-medium hover:border-[var(--border-strong)] hover:bg-[var(--input)] transition-colors disabled:opacity-50"
       >
         {pending ? "requesting…" : "Request €500"}
       </button>
