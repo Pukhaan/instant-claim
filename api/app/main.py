@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import bunq_service
 from .config import get_settings
+from .routes import chat as chat_routes
 
 
 @asynccontextmanager
@@ -60,6 +61,8 @@ def create_app() -> FastAPI:
         if not settings.bunq_sandbox:
             raise HTTPException(400, "sandbox-only endpoint")
         return bunq_service.request_sandbox_money(amount_eur)
+
+    app.include_router(chat_routes.router)
 
     return app
 

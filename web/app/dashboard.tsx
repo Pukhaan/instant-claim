@@ -67,7 +67,7 @@ export default async function Dashboard() {
       <div className="grid gap-6 md:grid-cols-3">
         <StatusCard health={health} />
         <AccountCard account={primary} accountsTotal={accounts.length} />
-        <ActionCard />
+        <ActionCard anthropicReady={Boolean(health.anthropic_configured)} />
       </div>
 
       <TransactionsTable transactions={transactions} />
@@ -124,13 +124,35 @@ function AccountCard({
   );
 }
 
-function ActionCard() {
+function ActionCard({ anthropicReady }: { anthropicReady: boolean }) {
   return (
-    <Card title="Sandbox">
-      <p className="text-sm text-muted leading-relaxed">
-        Request test money from <span className="font-mono">sugardaddy@bunq.com</span> to seed a bonus.
-      </p>
-      <TopUpButton />
+    <Card title="Talk to Teller">
+      {anthropicReady ? (
+        <>
+          <p className="text-sm text-muted leading-relaxed">
+            Ask about balances, move money, or split a bonus in plain language.
+          </p>
+          <div className="mt-4 flex items-center gap-3">
+            <a
+              href="/chat"
+              className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-black transition-opacity hover:opacity-90"
+            >
+              Open chat
+            </a>
+            <TopUpButton />
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-muted leading-relaxed">
+            Set <span className="font-mono text-xs">ANTHROPIC_API_KEY</span> in{" "}
+            <span className="font-mono text-xs">api/.env</span> and restart the backend to enable chat.
+          </p>
+          <div className="mt-4">
+            <TopUpButton />
+          </div>
+        </>
+      )}
     </Card>
   );
 }
