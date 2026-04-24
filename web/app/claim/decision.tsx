@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { formatEUR } from "@/lib/format";
 import type { ClaimResponse } from "@/lib/claim";
 
@@ -103,11 +102,9 @@ export function ProcessingCard({ step }: { step: SubmitStep }) {
 export function DecisionCard({
   result,
   onNewClaim,
-  showSandboxLink = true,
 }: {
   result: ClaimResponse;
   onNewClaim?: () => void;
-  showSandboxLink?: boolean;
 }) {
   const { decision, transcript, payout, policy } = result;
   const tone =
@@ -263,24 +260,14 @@ export function DecisionCard({
         )}
       </div>
 
-      {(onNewClaim || showSandboxLink) && (
+      {onNewClaim && (
         <div className="flex items-center gap-3 pt-1">
-          {onNewClaim && (
-            <button
-              onClick={onNewClaim}
-              className="inline-flex h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] hover:bg-accent-hover transition-colors"
-            >
-              File another claim
-            </button>
-          )}
-          {showSandboxLink && (
-            <Link
-              href="/sandbox"
-              className="inline-flex h-9 items-center rounded-full border border-[var(--border)] px-4 text-sm font-medium hover:border-[var(--border-strong)] hover:bg-[var(--input)] transition-colors"
-            >
-              See it in the sandbox →
-            </Link>
-          )}
+          <button
+            onClick={onNewClaim}
+            className="inline-flex h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] hover:bg-accent-hover transition-colors"
+          >
+            File another claim
+          </button>
         </div>
       )}
     </section>

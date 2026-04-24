@@ -1,12 +1,11 @@
 import Link from "next/link";
 
-type Section = "home" | "dashboard" | "receipt" | "sandbox" | "chat";
+type Section = "home" | "dashboard" | "receipt" | "chat";
 
 const LINKS: { id: Section; label: string; href: string }[] = [
   { id: "home", label: "Chat", href: "/" },
   { id: "dashboard", label: "Dashboard", href: "/dashboard" },
   { id: "receipt", label: "Receipts", href: "/receipt" },
-  { id: "sandbox", label: "Sandbox", href: "/sandbox" },
 ];
 
 export default function TopNav({ current }: { current: Section }) {

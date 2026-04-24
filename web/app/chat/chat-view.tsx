@@ -59,6 +59,50 @@ const STARTERS = [
   "Create a sub-account called Emergency Savings",
 ];
 
+/** Words that flag the user is opening a claim, not a balance question. */
+const CLAIM_TRIGGERS = [
+  "claim",
+  "broke",
+  "broken",
+  "cracked",
+  "smashed",
+  "shattered",
+  "stolen",
+  "theft",
+  "robbed",
+  "delayed",
+  "delay",
+  "cancelled",
+  "canceled",
+  "missed flight",
+  "lost luggage",
+  "lost my",
+  "damaged",
+  "damage",
+  "insurance",
+  "refund",
+  "warranty",
+];
+
+const CLAIM_RE = new RegExp(
+  String.raw`\b(?:${CLAIM_TRIGGERS.map((w) => w.replace(/\s+/g, "\\s+")).join("|")})\b`,
+  "i",
+);
+
+function detectsClaim(text: string): boolean {
+  return CLAIM_RE.test(text);
+}
+
+/** A "bare" claim opener — nothing useful to extract yet. We still need to
+ *  ask for a description. e.g. "I have a claim" / "claim" / "file a claim". */
+function isBareClaimOpener(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.length > 30) return false;
+  return /^(?:i\s+(?:have|want|need)|file|start|open|do|do you|can you|how do i|how to)?\s*(?:a\s+|to\s+)?(?:make\s+|file\s+|do\s+|start\s+)?(?:an?\s+)?claim\b[\s.!?]*$/i.test(
+    t,
+  );
+}
+
 export default function ChatView({ hero = false }: { hero?: boolean }) {
   const sessionId = useMemo(() => {
     if (typeof window === "undefined") return "loading";
@@ -101,12 +145,26 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   // ---------------- text chat ----------------
 
   async function send(text: string) {
-    if (!text.trim() || isStreaming) return;
+    const trimmed = text.trim();
+    if (!trimmed || isStreaming) return;
+
+    // Auto-detect claim intent. The user types or speaks naturally — no
+    // dedicated "I have a claim" button needed.
+    if (!claim.active && detectsClaim(trimmed)) {
+      setInput("");
+      if (isBareClaimOpener(trimmed)) {
+        startClaimWithIntro(trimmed);
+      } else {
+        startClaimWithDescription(trimmed);
+      }
+      return;
+    }
+
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
       kind: "text",
-      text,
+      text: trimmed,
     };
     const asst: Message = {
       id: crypto.randomUUID(),
@@ -121,7 +179,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     setIsStreaming(true);
 
     try {
-      for await (const evt of streamChat(sessionId, text)) {
+      for await (const evt of streamChat(sessionId, trimmed)) {
         setMessages((m) => applyEvent(m, asst.id, evt));
       }
     } finally {
@@ -227,7 +285,9 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
 
   const CLAIM_COVERAGE = "default" as const;
 
-  function startClaim() {
+  /** "I have a claim" — bare opener, we still need a description. Opens with
+   *  the voice card. */
+  function startClaimWithIntro(userText: string) {
     setClaim({
       active: true,
       photo: null,
@@ -235,19 +295,52 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       transcript: null,
       recordingStream: null,
     });
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      kind: "text",
-      text: "I have a claim",
-    };
-    const promptMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      kind: "claim",
-      phase: { kind: "voice" },
-    };
-    setMessages((m) => [...m, userMsg, promptMsg]);
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        kind: "text",
+        text: userText,
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        kind: "claim",
+        phase: { kind: "voice" },
+      },
+    ]);
+  }
+
+  /** User typed (or spoke) something descriptive enough to use as the claim
+   *  transcript directly — skip voice and go straight to the photo step. */
+  function startClaimWithDescription(userText: string) {
+    setClaim({
+      active: true,
+      photo: null,
+      audio: null,
+      transcript: userText,
+      recordingStream: null,
+    });
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        kind: "text",
+        text: userText,
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        kind: "claim",
+        phase: { kind: "photo" },
+      },
+    ]);
+  }
+
+  function startClaim() {
+    startClaimWithIntro("I have a claim");
   }
 
   function openClaimCamera() {
@@ -529,7 +622,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     <div className="flex-1 flex flex-col min-h-0">
       <div ref={scrollRef} className="flex-1 overflow-y-auto -mx-6 px-6 space-y-5 pb-6">
         {!hasMessages ? (
-          <Starters hero={hero} onPick={send} onClaim={startClaim} />
+          <Starters hero={hero} onPick={send} />
         ) : (
           messages.map((msg) => (
             <MessageRow
@@ -634,11 +727,9 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
 function Starters({
   hero,
   onPick,
-  onClaim,
 }: {
   hero: boolean;
   onPick: (s: string) => void;
-  onClaim: () => void;
 }) {
   return (
     <div className={hero ? "pt-6 md:pt-10" : "py-12 md:py-16"}>
@@ -656,7 +747,8 @@ function Starters({
               Hi, I&apos;m Teller.
             </h1>
             <p className="text-muted text-sm md:text-base mt-1 leading-relaxed">
-              Your bunq co-pilot. Talk to me, type to me, or snap a receipt — I&apos;ll handle the rest.
+              Your bunq co-pilot. Talk to me, type, snap a receipt, or just tell me something
+              broke — I&apos;ll handle the rest.
             </p>
           </div>
         </div>
@@ -672,37 +764,6 @@ function Starters({
         </>
       )}
       <ul className="space-y-2">
-        <li>
-          <button
-            onClick={onClaim}
-            className="group flex items-center justify-between gap-3 w-full text-left text-sm px-4 py-3 rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-subtle)] hover:bg-[var(--accent-subtle)] transition-colors"
-          >
-            <span className="flex items-center gap-3 min-w-0">
-              <span
-                className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-accent text-[var(--accent-contrast)] shrink-0"
-                aria-hidden
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                  <circle cx="12" cy="13" r="3.5" />
-                </svg>
-              </span>
-              <span className="truncate">I have a claim — phone, travel, or something else</span>
-            </span>
-            <span className="text-muted text-xs group-hover:text-foreground transition-colors shrink-0">
-              →
-            </span>
-          </button>
-        </li>
         {STARTERS.map((s) => (
           <li key={s}>
             <button

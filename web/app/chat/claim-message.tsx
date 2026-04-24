@@ -327,7 +327,7 @@ function DecisionInline({
   result: ClaimResponse;
   onNewClaim?: () => void;
 }) {
-  return <DecisionCard result={result} onNewClaim={onNewClaim} showSandboxLink />;
+  return <DecisionCard result={result} onNewClaim={onNewClaim} />;
 }
 
 function ErrorCard({ error }: { error: string }) {
