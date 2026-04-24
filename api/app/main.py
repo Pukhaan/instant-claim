@@ -75,6 +75,14 @@ def create_app() -> FastAPI:
             raise HTTPException(400, "sandbox-only endpoint")
         return bunq_service.request_sandbox_money(amount_eur)
 
+    @app.post("/sandbox/seed")
+    def sandbox_seed(force: bool = False) -> dict:
+        if not settings.bunq_sandbox:
+            raise HTTPException(400, "sandbox-only endpoint")
+        from . import seed as seeder
+
+        return seeder.seed(force=force)
+
     app.include_router(chat_routes.router)
     app.include_router(receipt_routes.router)
     app.include_router(voice_routes.router)

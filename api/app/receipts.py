@@ -23,9 +23,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import anthropic
-
-from . import bunq_service
+from . import bunq_service, llm
 from .config import get_settings
 
 _enrichments_lock = threading.Lock()
@@ -112,23 +110,13 @@ EXTRACT_PROMPT = (
 )
 
 
-def _anthropic_client() -> anthropic.Anthropic:
-    settings = get_settings()
-    if not settings.anthropic_api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY not configured. Add it to api/.env and restart the backend."
-        )
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
-
-
 def extract_receipt(image_bytes: bytes, media_type: str = "image/jpeg") -> dict[str, Any]:
     """Extract structured receipt data from an image using Claude vision."""
-    settings = get_settings()
-    client = _anthropic_client()
+    client = llm.claude()
     b64 = base64.standard_b64encode(image_bytes).decode()
 
     response = client.messages.create(
-        model=settings.anthropic_model,
+        model=llm.model(),
         max_tokens=1024,
         tools=[RECEIPT_TOOL],
         tool_choice={"type": "tool", "name": "record_receipt"},

@@ -52,3 +52,4 @@ venv/
 # testing
 coverage/
 .nyc_output/
+api/.bunq_seeded

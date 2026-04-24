@@ -20,10 +20,7 @@ import base64
 import json
 from typing import Any
 
-import anthropic
-
-from . import bunq_service, transcribe
-from .config import get_settings
+from . import bunq_service, llm, transcribe
 
 # --------------------------------------------------------------------------
 # Policy (hardcoded — in production bunq would look up the user's plan)
@@ -135,11 +132,11 @@ SYSTEM = """You are the bunq claims triage AI. You process real insurance claims
 
 Be conservative but reasonable.
 
-APPROVE when: damage is clearly covered; claim amount is within limits; the underlying purchase appears in the recent bunq transactions (or the user credibly describes a bunq payment). Trivially obvious small-amount approvals are the target of this system.
+APPROVE when: damage is clearly covered; claim amount is within policy limits; AND the underlying purchase appears in the recent bunq transactions (e.g. "iPhone" claim matches a Fonq / Apple Store payment). Trivially obvious small-amount approvals are the target of this system.
 
-REJECT when: the damage is obviously excluded (intentional, normal wear, out-of-policy cause like water damage on a non-waterproof device); the claim exceeds limits; there is no plausible purchase evidence on the bunq account.
+REJECT only when: the damage is **clearly** excluded by the policy (intentional, normal wear, or an out-of-scope cause like water damage on a non-waterproof device) OR the claim exceeds the policy limit by a lot. Do not reject purely because no purchase was found — that's not enough evidence to reject, it's a reason to escalate.
 
-ESCALATE when: ambiguous damage; high severity; large payouts; contradictory evidence between photo and voice; low confidence overall.
+ESCALATE when: the item the user is claiming for has **no matching purchase** on the bunq transactions and no obvious policy exclusion (e.g. user claims an iPad but there is no tablet or electronics purchase visible); ambiguous damage; high severity; large payouts; contradictory evidence between photo and voice; low confidence overall. When escalating for missing purchase evidence, phrase it warmly: "I don't see that purchase on your bunq account yet — let me loop in a human to help sort this out."
 
 Apply deductibles correctly. Example: policy says "up to €500 after €25 deductible" and user claims €120 → payout = €95.
 
@@ -168,10 +165,6 @@ def process_claim(
     I heard" review card to the user. Falling back to `audio_bytes` works when
     no transcript is available yet.
     """
-    settings = get_settings()
-    if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured")
-
     # Step 1: transcribe voice (or skip if we already have the text)
     if transcript_text and transcript_text.strip():
         transcript = transcript_text.strip()
@@ -200,8 +193,8 @@ def process_claim(
     # Step 3: policy
     policy = COVERAGE_POLICIES.get(coverage, COVERAGE_POLICIES["default"])
 
-    # Step 4: vision + LLM decision in one Claude call
-    anthro = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    # Step 4: vision + LLM decision in one Claude call (via Bedrock by default)
+    client = llm.claude()
     b64 = base64.standard_b64encode(image_bytes).decode()
 
     user_content: list[dict[str, Any]] = [
@@ -221,8 +214,8 @@ def process_claim(
         },
     ]
 
-    resp = anthro.messages.create(
-        model=settings.anthropic_model,
+    resp = client.messages.create(
+        model=llm.model(),
         max_tokens=1024,
         system=SYSTEM,
         tools=[CLAIM_TOOL],

@@ -12,9 +12,7 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-import anthropic
-
-from .config import get_settings
+from . import llm
 
 CLASSIFY_TOOL: dict[str, Any] = {
     "name": "classify_photo",
@@ -72,15 +70,11 @@ Subject and summary are customer-facing — keep them human and short.
 
 
 def classify_photo(image_bytes: bytes, image_mime: str) -> dict[str, Any]:
-    settings = get_settings()
-    if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured")
-
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = llm.claude()
     b64 = base64.standard_b64encode(image_bytes).decode()
 
     resp = client.messages.create(
-        model=settings.anthropic_model,
+        model=llm.model(),
         max_tokens=512,
         system=SYSTEM,
         tools=[CLASSIFY_TOOL],

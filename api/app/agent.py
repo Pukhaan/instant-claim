@@ -28,8 +28,7 @@ from typing import Any
 
 import anthropic
 
-from . import tool_defs
-from .config import get_settings
+from . import llm, tool_defs
 
 SYSTEM_PROMPT = """You are Teller, an AI co-pilot for the bunq bank app.
 You help the user understand and manage their money. You can hear commands, see receipts, and take actions on the user's real bunq account through tools.
@@ -67,13 +66,8 @@ If the reply is a plain one-liner acknowledgement ("Done — moved €300 to Eme
 
 class TellerAgent:
     def __init__(self, model: str | None = None) -> None:
-        settings = get_settings()
-        if not settings.anthropic_api_key:
-            raise RuntimeError(
-                "ANTHROPIC_API_KEY not configured. Add it to api/.env and restart the backend."
-            )
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        self.model = model or settings.anthropic_model
+        self.client = llm.claude()
+        self.model = model or llm.model()
         self.messages: list[dict[str, Any]] = []
 
     def add_user_message(self, text: str) -> None:

@@ -53,11 +53,13 @@ type ClaimFlow = {
   recordingStream: MediaStream | null;
 };
 
-const STARTERS = [
-  "What's my balance and what did I spend on recently?",
-  "Top me up €500 from Sugar Daddy",
-  "I just got a €500 bonus — help me split it into savings, stocks, and fun money",
-  "Create a sub-account called Emergency Savings",
+type Starter =
+  | { kind: "send"; label: string; message: string }
+  | { kind: "action"; label: string; action: "scan-receipt" };
+
+const STARTERS: Starter[] = [
+  { kind: "send", label: "I have a claim", message: "I have a claim" },
+  { kind: "action", label: "Scan a receipt", action: "scan-receipt" },
 ];
 
 /** Words/phrases that flag the user is opening a claim, not a balance
@@ -852,7 +854,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     <div className="flex-1 flex flex-col min-h-0">
       <div ref={scrollRef} className="flex-1 overflow-y-auto -mx-6 px-6 space-y-5 pb-6">
         {!hasMessages ? (
-          <Starters hero={hero} onPick={send} />
+          <Starters hero={hero} onPick={send} onScanReceipt={() => fileInputRef.current?.click()} />
         ) : (
           messages.map((msg) => (
             <MessageRow
@@ -957,9 +959,11 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
 function Starters({
   hero,
   onPick,
+  onScanReceipt,
 }: {
   hero: boolean;
   onPick: (s: string) => void;
+  onScanReceipt: () => void;
 }) {
   return (
     <div className={hero ? "pt-6 md:pt-10" : "py-12 md:py-16"}>
@@ -993,18 +997,23 @@ function Starters({
           </p>
         </>
       )}
-      <ul className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {STARTERS.map((s) => (
-          <li key={s}>
-            <button
-              onClick={() => onPick(s)}
-              className="w-full text-left text-sm px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors"
+          <button
+            key={s.label}
+            onClick={() => (s.kind === "send" ? onPick(s.message) : onScanReceipt())}
+            className="group flex items-center gap-3 text-left text-sm px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors"
+          >
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white transition-colors"
+              aria-hidden
             >
-              {s}
-            </button>
-          </li>
+              {s.kind === "send" ? <ShieldIcon className="h-4 w-4" /> : <CameraIcon className="h-4 w-4" />}
+            </span>
+            <span className="font-medium tracking-tight">{s.label}</span>
+          </button>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
@@ -1044,7 +1053,7 @@ function MessageRow({
     );
   }
   if (msg.role === "user" && msg.kind === "audio") {
-    return <AudioBubble blob={msg.blob} duration={msg.duration} caption={msg.caption} />;
+    return <AudioBubble duration={msg.duration} caption={msg.caption} />;
   }
   if (msg.role === "user") {
     return (
@@ -1176,6 +1185,42 @@ function MicButton({
       {busy ? <Spinner /> : <MicIcon active={active} />}
       <span className="sr-only">Voice input</span>
     </button>
+  );
+}
+
+function CameraIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M4 7h3l2-2h6l2 2h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
   );
 }
 

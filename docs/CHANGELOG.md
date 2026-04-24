@@ -1,3 +1,26 @@
+## {DateTime} [25-04-2026]
+
+### AWS-only LLM (Bedrock) + €20K seeded sandbox + top-right balance chip + refined starters + no audio replay
+
+**What changed**
+- New `api/app/llm.py` — single source of truth for the Claude client. Returns `anthropic.AnthropicBedrock(...)` by default (flag `USE_BEDROCK=true`, honours the workshop's session creds via `AWS_SESSION_TOKEN`) and resolves friendly model ids → Bedrock model ids (e.g. `claude-sonnet-4-5-20250929` → `us.anthropic.claude-sonnet-4-5-20250929-v1:0`). Falls back to direct `anthropic.Anthropic()` only if `USE_BEDROCK=false`.
+- Migrated **every** LLM call site (`api/app/agent.py`, `api/app/claims.py`, `api/app/receipts.py`, `api/app/photo_classify.py`) to the shared `llm.claude()` / `llm.model()` helpers. No more direct `anthropic.Anthropic(api_key=...)` in the codebase — fully AWS-native LLM path.
+- `api/app/seed.py` + `POST /sandbox/seed` — deposits up to €20K via batched Sugar Daddy `request-inquiry` calls, then creates 10 realistic outgoing payments (iPhone · Fonq €1249, MacBook · Apple €1799, Sony headphones €399, KLM flight €189, Vapiano, bol.com, Albert Heijn, Uber, Starbucks, coffee). Idempotent via `{STATE_DIR}/.bunq_seeded` flag. Live balance: €12,147 after seeding — every merchant payment lands on the account and the claims pipeline now matches them.
+- `api/app/claims.py` SYSTEM prompt tightened: **no matching purchase → escalate**, not reject. Reject is now reserved for clear policy exclusions. Live tests: iPhone claim → APPROVE €95 (matched Fonq), iPad claim → ESCALATE "I don't see that purchase on your bunq account yet — let me loop in a human" (no matching tablet purchase). This mirrors the user's desired SnapClaim behaviour.
+- `web/app/balance-chip.tsx` — server component that fetches `/api/accounts` and renders a rounded pill with live-dot + uppercase "BALANCE" label + tabular-nums amount. Mounted top-right of the chat-first header where the Sandbox chip used to live.
+- `web/app/chat/chat-view.tsx` — starters slimmed from 4 verbose rows to 2 icon-pill buttons: **"I have a claim"** (sends as text — auto-triggers the claim flow via `CLAIM_TRIGGERS`) and **"Scan a receipt"** (opens the camera file picker directly). New `ShieldIcon` + `CameraIcon` SVGs inline.
+- `web/app/chat/audio-bubble.tsx` rewritten — dropped the `<audio controls>` and `URL.createObjectURL`. The bubble now just shows a wave glyph + "4.2s · your message" tag. User can't re-listen to their own clips (per request — the transcript review card is the source of truth).
+
+**Impact**
+- `grep -r "anthropic.Anthropic(" api/app/` → 0 hits outside `llm.py`. One AWS bill, one IAM identity, one audit trail.
+- Live Bedrock chat latency: 2.5s first byte → 3.5s done (Claude Sonnet 4.5 via us-east-1 cross-region profile).
+- Live claim end-to-end: 5.9–6.7s on Bedrock + batch Transcribe.
+- Hero view now shows "€12,147.36" chip in the top right, making the sandbox balance concrete for the demo.
+
+**Not yet done (explicitly deferred)**
+- Real-time voice → AWS Transcribe **Streaming** (WebSocket). Batch mode has a fixed ~4-5s overhead we can't optimise further. Streaming gives partial transcripts in <500ms but is a 2-3h refactor (frontend WebSocket client + backend streaming proxy). Scheduled for the next session.
+
+
 # Changelog
 
 ## 25-04-2026

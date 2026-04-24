@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-5-20250929"
 
+    # Default to Bedrock so the whole stack is AWS-native. Flip to false to
+    # fall back to api.anthropic.com (useful when AWS session creds expire).
+    use_bedrock: bool = True
+
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
     aws_session_token: str = ""
