@@ -1,16 +1,29 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { streamChat, resetChat, type ChatEvent } from "@/lib/chat";
 import { createRecorder, transcribeBlob, type RecorderHandle } from "@/lib/voice";
 import { uploadReceipt } from "@/lib/receipt";
+import { submitClaim, type ClaimResponse, type Coverage } from "@/lib/claim";
+import { cycleSubmitSteps } from "../claim/decision";
 import AssistantMessage from "./assistant-message";
 import ReceiptMessage, { type ReceiptMessageState } from "./receipt-message";
+import ClaimMessage, { type ClaimPhase } from "./claim-message";
+import AudioBubble from "./audio-bubble";
+
+const CLAIM_VOICE_MAX_S = 20;
 
 type Message =
   | { id: string; role: "user"; kind: "text"; text: string }
   | { id: string; role: "user"; kind: "image"; previewUrl: string; caption: string }
+  | {
+      id: string;
+      role: "user";
+      kind: "audio";
+      blob: Blob;
+      duration: number;
+      caption: string;
+    }
   | {
       id: string;
       role: "assistant";
@@ -19,12 +32,8 @@ type Message =
       toolCalls: ToolCall[];
       pending: boolean;
     }
-  | {
-      id: string;
-      role: "assistant";
-      kind: "receipt";
-      state: ReceiptMessageState;
-    };
+  | { id: string; role: "assistant"; kind: "receipt"; state: ReceiptMessageState }
+  | { id: string; role: "assistant"; kind: "claim"; phase: ClaimPhase };
 
 type ToolCall = {
   name: string;
@@ -35,12 +44,25 @@ type ToolCall = {
 
 type VoiceState = "idle" | "recording" | "transcribing" | "error";
 
+type ClaimFlow = {
+  active: boolean;
+  coverage: Coverage | null;
+  photo: { file: File; preview: string } | null;
+  audio: { blob: Blob; duration: number } | null;
+};
+
 const STARTERS = [
   "What's my balance and what did I spend on recently?",
   "Top me up €500 from Sugar Daddy",
   "I just got a €500 bonus — help me split it into savings, stocks, and fun money",
   "Create a sub-account called Emergency Savings",
 ];
+
+const COVERAGE_LABEL: Record<Coverage, string> = {
+  phone: "Phone or device",
+  travel: "Travel",
+  default: "Something else",
+};
 
 export default function ChatView({ hero = false }: { hero?: boolean }) {
   const sessionId = useMemo(() => {
@@ -58,9 +80,20 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [voice, setVoice] = useState<VoiceState>("idle");
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [claim, setClaim] = useState<ClaimFlow>({
+    active: false,
+    coverage: null,
+    photo: null,
+    audio: null,
+  });
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const claimFileInputRef = useRef<HTMLInputElement>(null);
+  const claimRecorderRef = useRef<RecorderHandle | null>(null);
+  const claimTimerRef = useRef<number | null>(null);
+  const claimStartRef = useRef<number>(0);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -68,6 +101,8 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       behavior: "smooth",
     });
   }, [messages]);
+
+  // ---------------- text chat ----------------
 
   async function send(text: string) {
     if (!text.trim() || isStreaming) return;
@@ -104,6 +139,8 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       setIsStreaming(false);
     }
   }
+
+  // ---------------- receipt scan (composer camera) ----------------
 
   async function pickReceipt(file: File) {
     const previewUrl = URL.createObjectURL(file);
@@ -148,6 +185,8 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     }
   }
 
+  // ---------------- composer mic (voice → text → /chat) ----------------
+
   async function toggleMic() {
     setVoiceError(null);
     if (voice === "recording") {
@@ -185,22 +224,249 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     }
   }
 
+  // ---------------- claim flow (in-chat orchestrator) ----------------
+
+  function startClaim() {
+    setClaim({ active: true, coverage: null, photo: null, audio: null });
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      kind: "text",
+      text: "I have a claim",
+    };
+    const promptMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      kind: "claim",
+      phase: { kind: "coverage" },
+    };
+    setMessages((m) => [...m, userMsg, promptMsg]);
+  }
+
+  function pickCoverage(c: Coverage) {
+    setClaim((s) => ({ ...s, coverage: c }));
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        kind: "text",
+        text: COVERAGE_LABEL[c],
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        kind: "claim",
+        phase: { kind: "photo", coverage: c },
+      },
+    ]);
+  }
+
+  function openClaimCamera() {
+    claimFileInputRef.current?.click();
+  }
+
+  function pickClaimPhoto(file: File) {
+    const cov = claim.coverage;
+    if (!cov) return;
+    const preview = URL.createObjectURL(file);
+    setClaim((s) => ({ ...s, photo: { file, preview } }));
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        kind: "image",
+        previewUrl: preview,
+        caption: "Damage photo",
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        kind: "claim",
+        phase: { kind: "voice", coverage: cov },
+      },
+    ]);
+  }
+
+  async function startClaimVoice() {
+    const cov = claim.coverage;
+    if (!cov) return;
+    try {
+      claimRecorderRef.current = createRecorder();
+      await claimRecorderRef.current.start();
+      claimStartRef.current = Date.now();
+      // Mutate the last claim message into voiceRecording.
+      setMessages((m) =>
+        mutateLastClaim(m, () => ({
+          kind: "voiceRecording",
+          coverage: cov,
+          elapsed: 0,
+        })),
+      );
+      claimTimerRef.current = window.setInterval(() => {
+        const elapsed = (Date.now() - claimStartRef.current) / 1000;
+        if (elapsed >= CLAIM_VOICE_MAX_S) {
+          stopClaimVoice();
+        } else {
+          setMessages((m) =>
+            mutateLastClaim(m, (curr) =>
+              curr.kind === "voiceRecording"
+                ? { ...curr, elapsed }
+                : curr,
+            ),
+          );
+        }
+      }, 100) as unknown as number;
+    } catch (err) {
+      setMessages((m) =>
+        mutateLastClaim(m, () => ({
+          kind: "error",
+          error: err instanceof Error ? err.message : "Mic permission denied",
+        })),
+      );
+    }
+  }
+
+  async function stopClaimVoice() {
+    if (claimTimerRef.current) {
+      window.clearInterval(claimTimerRef.current);
+      claimTimerRef.current = null;
+    }
+    const cov = claim.coverage;
+    const photo = claim.photo;
+    if (!cov || !photo) return;
+    try {
+      const blob = await claimRecorderRef.current!.stop();
+      const duration = (Date.now() - claimStartRef.current) / 1000;
+      setClaim((s) => ({ ...s, audio: { blob, duration } }));
+
+      const userAudio: Message = {
+        id: crypto.randomUUID(),
+        role: "user",
+        kind: "audio",
+        blob,
+        duration,
+        caption: "Voice note",
+      };
+      const processingMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        kind: "claim",
+        phase: { kind: "processing", coverage: cov, step: "reading_photo" },
+      };
+      setMessages((m) => [...m, userAudio, processingMsg]);
+
+      // Cosmetic step-cycler
+      const ticker = cycleSubmitSteps((step) =>
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === processingMsg.id && msg.kind === "claim" && msg.phase.kind === "processing"
+              ? { ...msg, phase: { ...msg.phase, step } }
+              : msg,
+          ),
+        ),
+      );
+
+      try {
+        const result = await submitClaim({
+          image: photo.file,
+          audio: blob,
+          coverage: cov,
+        });
+        ticker.cancel();
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === processingMsg.id && msg.kind === "claim"
+              ? { ...msg, phase: { kind: "decided", result } }
+              : msg,
+          ),
+        );
+        setClaim({ active: false, coverage: null, photo: null, audio: null });
+      } catch (err) {
+        ticker.cancel();
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === processingMsg.id && msg.kind === "claim"
+              ? {
+                  ...msg,
+                  phase: {
+                    kind: "error",
+                    error: err instanceof Error ? err.message : String(err),
+                  },
+                }
+              : msg,
+          ),
+        );
+        setClaim({ active: false, coverage: null, photo: null, audio: null });
+      }
+    } catch (err) {
+      setMessages((m) =>
+        mutateLastClaim(m, () => ({
+          kind: "error",
+          error: err instanceof Error ? err.message : String(err),
+        })),
+      );
+    }
+  }
+
+  function cancelClaimVoice() {
+    if (claimTimerRef.current) {
+      window.clearInterval(claimTimerRef.current);
+      claimTimerRef.current = null;
+    }
+    claimRecorderRef.current?.cancel();
+    const cov = claim.coverage;
+    if (!cov) return;
+    setMessages((m) =>
+      mutateLastClaim(m, () => ({ kind: "voice", coverage: cov })),
+    );
+  }
+
+  // ---------------- misc ----------------
+
   async function reset() {
     await resetChat(sessionId);
     setMessages([]);
+    setClaim({ active: false, coverage: null, photo: null, audio: null });
   }
 
   const hasMessages = messages.length > 0;
+  const composerLocked = isStreaming || voice !== "idle" || claim.active;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div ref={scrollRef} className="flex-1 overflow-y-auto -mx-6 px-6 space-y-5 pb-6">
         {!hasMessages ? (
-          <Starters hero={hero} onPick={send} />
+          <Starters hero={hero} onPick={send} onClaim={startClaim} />
         ) : (
-          messages.map((msg) => <MessageRow key={msg.id} msg={msg} />)
+          messages.map((msg) => (
+            <MessageRow
+              key={msg.id}
+              msg={msg}
+              onCoverage={pickCoverage}
+              onPickPhoto={openClaimCamera}
+              onStartVoice={startClaimVoice}
+              onStopVoice={stopClaimVoice}
+              onCancelVoice={cancelClaimVoice}
+              onNewClaim={startClaim}
+            />
+          ))
         )}
       </div>
+
+      <input
+        ref={claimFileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+        capture="environment"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) pickClaimPhoto(f);
+          if (claimFileInputRef.current) claimFileInputRef.current.value = "";
+        }}
+        className="sr-only"
+      />
 
       <form
         className="sticky bottom-4 flex items-end gap-2 bg-[var(--card)] rounded-3xl border border-[var(--border)] p-3 shadow-sm"
@@ -223,9 +489,9 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
         />
         <CameraButton
           onClick={() => fileInputRef.current?.click()}
-          disabled={voice !== "idle"}
+          disabled={composerLocked}
         />
-        <MicButton state={voice} error={voiceError} onToggle={toggleMic} />
+        <MicButton state={voice} error={voiceError} onToggle={toggleMic} disabled={claim.active} />
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -236,15 +502,17 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
             }
           }}
           placeholder={
-            voice === "recording"
-              ? "Listening…"
-              : voice === "transcribing"
-                ? "Transcribing…"
-                : "Ask Teller anything about your money…"
+            claim.active
+              ? "Finish your claim above…"
+              : voice === "recording"
+                ? "Listening…"
+                : voice === "transcribing"
+                  ? "Transcribing…"
+                  : "Ask Teller anything about your money…"
           }
           rows={1}
           className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted px-2 py-1.5 leading-relaxed max-h-40"
-          disabled={isStreaming || voice !== "idle"}
+          disabled={composerLocked}
         />
         <div className="flex items-center gap-2">
           {hasMessages && (
@@ -259,7 +527,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
           )}
           <button
             type="submit"
-            disabled={isStreaming || voice !== "idle" || !input.trim()}
+            disabled={composerLocked || !input.trim()}
             className="inline-flex h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] transition-colors hover:bg-accent-hover disabled:opacity-30"
           >
             {isStreaming ? "…" : "Send"}
@@ -270,7 +538,15 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   );
 }
 
-function Starters({ hero, onPick }: { hero: boolean; onPick: (s: string) => void }) {
+function Starters({
+  hero,
+  onPick,
+  onClaim,
+}: {
+  hero: boolean;
+  onPick: (s: string) => void;
+  onClaim: () => void;
+}) {
   return (
     <div className={hero ? "pt-6 md:pt-10" : "py-12 md:py-16"}>
       {hero ? (
@@ -304,8 +580,8 @@ function Starters({ hero, onPick }: { hero: boolean; onPick: (s: string) => void
       )}
       <ul className="space-y-2">
         <li>
-          <Link
-            href="/claim"
+          <button
+            onClick={onClaim}
             className="group flex items-center justify-between gap-3 w-full text-left text-sm px-4 py-3 rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-subtle)] hover:bg-[var(--accent-subtle)] transition-colors"
           >
             <span className="flex items-center gap-3 min-w-0">
@@ -332,7 +608,7 @@ function Starters({ hero, onPick }: { hero: boolean; onPick: (s: string) => void
             <span className="text-muted text-xs group-hover:text-foreground transition-colors shrink-0">
               →
             </span>
-          </Link>
+          </button>
         </li>
         {STARTERS.map((s) => (
           <li key={s}>
@@ -349,7 +625,23 @@ function Starters({ hero, onPick }: { hero: boolean; onPick: (s: string) => void
   );
 }
 
-function MessageRow({ msg }: { msg: Message }) {
+function MessageRow({
+  msg,
+  onCoverage,
+  onPickPhoto,
+  onStartVoice,
+  onStopVoice,
+  onCancelVoice,
+  onNewClaim,
+}: {
+  msg: Message;
+  onCoverage: (c: Coverage) => void;
+  onPickPhoto: () => void;
+  onStartVoice: () => void;
+  onStopVoice: () => void;
+  onCancelVoice: () => void;
+  onNewClaim: () => void;
+}) {
   if (msg.role === "user" && msg.kind === "image") {
     return (
       <div className="flex justify-end">
@@ -363,6 +655,9 @@ function MessageRow({ msg }: { msg: Message }) {
       </div>
     );
   }
+  if (msg.role === "user" && msg.kind === "audio") {
+    return <AudioBubble blob={msg.blob} duration={msg.duration} caption={msg.caption} />;
+  }
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -374,6 +669,20 @@ function MessageRow({ msg }: { msg: Message }) {
   }
   if (msg.kind === "receipt") {
     return <ReceiptMessage state={msg.state} />;
+  }
+  if (msg.kind === "claim") {
+    return (
+      <ClaimMessage
+        phase={msg.phase}
+        onCoverage={onCoverage}
+        onPickPhoto={onPickPhoto}
+        onStartVoice={onStartVoice}
+        onStopVoice={onStopVoice}
+        onCancelVoice={onCancelVoice}
+        onNewClaim={onNewClaim}
+        voiceMaxSeconds={CLAIM_VOICE_MAX_S}
+      />
+    );
   }
   return (
     <div className="space-y-2">
@@ -411,13 +720,7 @@ function ToolCallRow({ call }: { call: ToolCall }) {
   );
 }
 
-function CameraButton({
-  onClick,
-  disabled,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-}) {
+function CameraButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
     <button
       type="button"
@@ -450,10 +753,12 @@ function MicButton({
   state,
   error,
   onToggle,
+  disabled,
 }: {
   state: VoiceState;
   error: string | null;
   onToggle: () => void;
+  disabled: boolean;
 }) {
   const active = state === "recording";
   const busy = state === "transcribing";
@@ -461,7 +766,7 @@ function MicButton({
     <button
       type="button"
       onClick={onToggle}
-      disabled={busy}
+      disabled={busy || disabled}
       title={
         state === "recording"
           ? "Stop recording"
@@ -470,7 +775,7 @@ function MicButton({
             : error ?? "Hold to speak"
       }
       aria-label={active ? "Stop recording" : "Start voice input"}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors disabled:opacity-40 ${
         active
           ? "border-accent bg-accent text-[var(--accent-contrast)]"
           : busy
@@ -555,6 +860,22 @@ function summarize(call: ToolCall): string {
     return account_id ? `account ${account_id}` : "";
   }
   return "";
+}
+
+/** Find the trailing `{kind:"claim"}` assistant message and apply a phase
+ *  transformer to it. No-op if no such message exists. */
+function mutateLastClaim(
+  messages: Message[],
+  next: (curr: ClaimPhase) => ClaimPhase,
+): Message[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === "assistant" && msg.kind === "claim") {
+      const updated = { ...msg, phase: next(msg.phase) };
+      return [...messages.slice(0, i), updated, ...messages.slice(i + 1)];
+    }
+  }
+  return messages;
 }
 
 function applyEvent(messages: Message[], asstId: string, evt: ChatEvent): Message[] {
