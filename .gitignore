@@ -1,0 +1,50 @@
+# env
+.env
+.env.local
+.env.*.local
+
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# next
+.next/
+out/
+build/
+dist/
+
+# vercel
+.vercel
+
+# aws
+.aws-sam/
+.serverless/
+
+# bunq local artifacts
+bunq_context.json
+bunq-installation.json
+bunq-session.json
+.bunq_sandbox_key
+*.pem
+*.key
+!public/**/*.pem
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+.cursor/
+*.log
+
+# testing
+coverage/
+.nyc_output/
