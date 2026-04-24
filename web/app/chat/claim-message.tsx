@@ -9,6 +9,7 @@ export type ClaimPhase =
   | { kind: "voice" }
   | { kind: "voiceRecording"; elapsed: number }
   | { kind: "transcribing" }
+  | { kind: "review"; transcript: string; duration: number }
   | { kind: "photo" }
   | { kind: "processing"; step: SubmitStep }
   | { kind: "decided"; result: ClaimResponse }
@@ -21,6 +22,8 @@ export default function ClaimMessage({
   onStartVoice,
   onStopVoice,
   onCancelVoice,
+  onConfirmTranscript,
+  onRerecord,
   onNewClaim,
   voiceMaxSeconds,
 }: {
@@ -30,6 +33,8 @@ export default function ClaimMessage({
   onStartVoice: () => void;
   onStopVoice: () => void;
   onCancelVoice: () => void;
+  onConfirmTranscript: () => void;
+  onRerecord: () => void;
   onNewClaim?: () => void;
   voiceMaxSeconds: number;
 }) {
@@ -58,6 +63,14 @@ export default function ClaimMessage({
           />
         )}
         {phase.kind === "transcribing" && <TranscribingCard />}
+        {phase.kind === "review" && (
+          <ReviewCard
+            transcript={phase.transcript}
+            duration={phase.duration}
+            onConfirm={onConfirmTranscript}
+            onRerecord={onRerecord}
+          />
+        )}
         {phase.kind === "photo" && <PhotoCard onPick={onPickPhoto} />}
         {phase.kind === "processing" && <ProcessingChat step={phase.step} />}
         {phase.kind === "decided" && (
@@ -85,11 +98,54 @@ function Bubble({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ReviewCard({
+  transcript,
+  duration,
+  onConfirm,
+  onRerecord,
+}: {
+  transcript: string;
+  duration: number;
+  onConfirm: () => void;
+  onRerecord: () => void;
+}) {
+  return (
+    <>
+      <Bubble>
+        <strong>Here&apos;s what I heard.</strong>
+        {" "}Sound right? If so I&apos;ll start working on it.
+      </Bubble>
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-accent mb-2">
+          Transcript · {duration.toFixed(1)}s
+        </p>
+        <p className="text-sm text-foreground leading-relaxed">
+          &ldquo;{transcript}&rdquo;
+        </p>
+      </section>
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <button
+          onClick={onConfirm}
+          className="inline-flex h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-[var(--accent-contrast)] hover:bg-accent-hover transition-colors"
+        >
+          Sounds right →
+        </button>
+        <button
+          onClick={onRerecord}
+          className="inline-flex h-9 items-center rounded-full border border-[var(--border)] px-4 text-sm font-medium hover:border-[var(--border-strong)] hover:bg-[var(--input)] transition-colors"
+        >
+          Re-record
+        </button>
+      </div>
+    </>
+  );
+}
+
 function PhotoCard({ onPick }: { onPick: () => void }) {
   return (
     <>
       <Bubble>
-        Got it. Now <strong>send me a photo</strong> of the damage, the receipt, or the delay notice — so I can take a look.
+        Got it. Now <strong>send me a photo</strong> — the damaged item, the receipt, the delay board. One clear shot is plenty.
       </Bubble>
       <button
         onClick={onPick}
@@ -124,14 +180,19 @@ function PhotoCard({ onPick }: { onPick: () => void }) {
 
 function TranscribingCard() {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 flex items-center gap-3 text-sm">
-      <span className="inline-flex items-center gap-1 text-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse" />
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse [animation-delay:200ms]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse [animation-delay:400ms]" />
-      </span>
-      <span className="text-muted">Transcribing what you said…</span>
-    </div>
+    <>
+      <Bubble>
+        Listening to that one second…
+      </Bubble>
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 flex items-center gap-3 text-sm">
+        <span className="inline-flex items-center gap-1 text-muted">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse [animation-delay:200ms]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--tint-8)] animate-pulse [animation-delay:400ms]" />
+        </span>
+        <span className="text-muted">Turning your voice into text…</span>
+      </div>
+    </>
   );
 }
 
@@ -157,8 +218,9 @@ function VoiceCard({
   return (
     <>
       <Bubble>
-        Hey — <strong>what&apos;s going on?</strong> Tell me what happened, when, and what it cost.
-        Up to {max} seconds.
+        <strong>Let&apos;s sort this out.</strong>
+        {" "}Just talk to me — what happened, when, where, and roughly what it cost. I&apos;ll pull
+        the facts out for you. Up to {max} seconds.
       </Bubble>
       <div
         className={`rounded-2xl border transition-colors p-5 flex flex-col gap-4 ${
@@ -247,7 +309,9 @@ function ProcessingChat({ step }: { step: SubmitStep }) {
   return (
     <>
       <Bubble>
-        On it — one multimodal Claude call is doing vision, transcription, transaction matching, and policy at once.
+        <strong>Give me a few seconds.</strong>
+        {" "}I&apos;m running a few checks in parallel — reading your photo, matching the purchase
+        against your bunq history, and comparing it all to your policy.
       </Bubble>
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3">
         <ProcessingCard step={step} />

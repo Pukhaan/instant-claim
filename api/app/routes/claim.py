@@ -32,7 +32,8 @@ _AUDIO_FORMAT: dict[str, str] = {
 @router.post("/claim")
 async def submit_claim(
     image: UploadFile = File(...),
-    audio: UploadFile = File(...),
+    audio: UploadFile | None = File(None),
+    transcript: str | None = Form(None),
     coverage: str = Form("default"),
 ) -> dict[str, Any]:
     image_mime = (image.content_type or "image/jpeg").split(";")[0].strip().lower()
@@ -41,21 +42,29 @@ async def submit_claim(
     if image_mime not in _IMAGE_OK:
         raise HTTPException(400, f"Unsupported image type: {image_mime!r}")
 
-    audio_mime = (audio.content_type or "audio/webm").split(";")[0].strip().lower()
-    audio_fmt = _AUDIO_FORMAT.get(audio_mime)
-    if not audio_fmt:
-        raise HTTPException(400, f"Unsupported audio type: {audio_mime!r}")
-
     image_bytes = await image.read()
-    audio_bytes = await audio.read()
     if not image_bytes:
         raise HTTPException(400, "Empty image")
-    if not audio_bytes:
-        raise HTTPException(400, "Empty audio")
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(413, f"Image too large (max {MAX_IMAGE_BYTES // 1024 // 1024} MB)")
-    if len(audio_bytes) > MAX_AUDIO_BYTES:
-        raise HTTPException(413, f"Audio too large (max {MAX_AUDIO_BYTES // 1024 // 1024} MB)")
+
+    audio_bytes: bytes | None = None
+    audio_fmt = "webm"
+    has_transcript = bool(transcript and transcript.strip())
+    if audio is not None and audio.filename:
+        audio_mime = (audio.content_type or "audio/webm").split(";")[0].strip().lower()
+        mapped = _AUDIO_FORMAT.get(audio_mime)
+        if not mapped:
+            raise HTTPException(400, f"Unsupported audio type: {audio_mime!r}")
+        audio_fmt = mapped
+        audio_bytes = await audio.read()
+        if not audio_bytes:
+            audio_bytes = None
+        elif len(audio_bytes) > MAX_AUDIO_BYTES:
+            raise HTTPException(413, f"Audio too large (max {MAX_AUDIO_BYTES // 1024 // 1024} MB)")
+
+    if not has_transcript and not audio_bytes:
+        raise HTTPException(400, "Either `audio` or `transcript` is required")
 
     try:
         return claims.process_claim(
@@ -64,6 +73,7 @@ async def submit_claim(
             audio_bytes=audio_bytes,
             audio_format=audio_fmt,
             coverage=coverage,
+            transcript_text=transcript if has_transcript else None,
         )
     except TimeoutError as exc:
         raise HTTPException(504, str(exc)) from exc

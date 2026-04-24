@@ -156,17 +156,31 @@ Call `record_claim_decision` exactly once."""
 def process_claim(
     image_bytes: bytes,
     image_mime: str,
-    audio_bytes: bytes,
-    audio_format: str,
+    audio_bytes: bytes | None = None,
+    audio_format: str = "webm",
     coverage: str = "default",
+    transcript_text: str | None = None,
 ) -> dict[str, Any]:
+    """Run the claim triage pipeline.
+
+    If `transcript_text` is provided, the AWS Transcribe step is skipped — this
+    is the fast path the chat UI uses after it has already shown a "Here's what
+    I heard" review card to the user. Falling back to `audio_bytes` works when
+    no transcript is available yet.
+    """
     settings = get_settings()
     if not settings.anthropic_api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is not configured")
 
-    # Step 1: transcribe voice
-    t = transcribe.transcribe_audio(audio_bytes, media_format=audio_format)
-    transcript = t.get("text") or ""
+    # Step 1: transcribe voice (or skip if we already have the text)
+    if transcript_text and transcript_text.strip():
+        transcript = transcript_text.strip()
+        t: dict[str, Any] = {"text": transcript}
+    elif audio_bytes:
+        t = transcribe.transcribe_audio(audio_bytes, media_format=audio_format)
+        transcript = t.get("text") or ""
+    else:
+        raise ValueError("Either transcript_text or audio_bytes is required")
 
     # Step 2: recent transactions for context
     client = bunq_service.get_client()

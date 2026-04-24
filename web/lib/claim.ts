@@ -28,12 +28,21 @@ export type Coverage = "default" | "phone" | "travel";
 
 export async function submitClaim(args: {
   image: File | Blob;
-  audio: File | Blob;
+  /** Optional — required if `transcript` is not given. */
+  audio?: File | Blob | null;
+  /** Pre-transcribed voice note. Skipping the backend Transcribe pass saves
+   *  5–8 seconds on the final analysis. */
+  transcript?: string;
   coverage?: Coverage;
 }): Promise<ClaimResponse> {
   const form = new FormData();
   form.append("image", args.image, "claim.jpg");
-  form.append("audio", args.audio, audioFilename(args.audio.type));
+  if (args.audio) {
+    form.append("audio", args.audio, audioFilename(args.audio.type));
+  }
+  if (args.transcript && args.transcript.trim()) {
+    form.append("transcript", args.transcript.trim());
+  }
   form.append("coverage", args.coverage ?? "default");
 
   const r = await fetch("/api/claim", { method: "POST", body: form });

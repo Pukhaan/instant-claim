@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { streamChat, resetChat, type ChatEvent } from "@/lib/chat";
 import { createRecorder, transcribeBlob, type RecorderHandle } from "@/lib/voice";
 import { uploadReceipt } from "@/lib/receipt";
-import { submitClaim, type ClaimResponse } from "@/lib/claim";
+import { submitClaim } from "@/lib/claim";
 import { cycleSubmitSteps } from "../claim/decision";
 import AssistantMessage from "./assistant-message";
 import ReceiptMessage, { type ReceiptMessageState } from "./receipt-message";
@@ -48,6 +48,7 @@ type ClaimFlow = {
   active: boolean;
   photo: { file: File; preview: string } | null;
   audio: { blob: Blob; duration: number } | null;
+  transcript: string | null;
   recordingStream: MediaStream | null;
 };
 
@@ -78,6 +79,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
     active: false,
     photo: null,
     audio: null,
+    transcript: null,
     recordingStream: null,
   });
 
@@ -226,7 +228,13 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   const CLAIM_COVERAGE = "default" as const;
 
   function startClaim() {
-    setClaim({ active: true, photo: null, audio: null, recordingStream: null });
+    setClaim({
+      active: true,
+      photo: null,
+      audio: null,
+      transcript: null,
+      recordingStream: null,
+    });
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -285,38 +293,11 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       window.clearInterval(claimTimerRef.current);
       claimTimerRef.current = null;
     }
+    let blob: Blob;
+    let duration: number;
     try {
-      const blob = await claimRecorderRef.current!.stop();
-      const duration = (Date.now() - claimStartRef.current) / 1000;
-      setClaim((s) => ({ ...s, audio: { blob, duration }, recordingStream: null }));
-      setMessages((m) =>
-        mutateLastClaim(m, () => ({ kind: "transcribing" })),
-      );
-      // Push the user audio bubble + advance the assistant bubble to "photo".
-      setMessages((m) => [
-        ...m.filter(
-          (msg) =>
-            !(
-              msg.role === "assistant" &&
-              msg.kind === "claim" &&
-              msg.phase.kind === "transcribing"
-            ),
-        ),
-        {
-          id: crypto.randomUUID(),
-          role: "user",
-          kind: "audio",
-          blob,
-          duration,
-          caption: "Voice note",
-        },
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          kind: "claim",
-          phase: { kind: "photo" },
-        },
-      ]);
+      blob = await claimRecorderRef.current!.stop();
+      duration = (Date.now() - claimStartRef.current) / 1000;
     } catch (err) {
       setMessages((m) =>
         mutateLastClaim(m, () => ({
@@ -325,7 +306,118 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
         })),
       );
       setClaim((s) => ({ ...s, recordingStream: null }));
+      return;
     }
+
+    setClaim((s) => ({ ...s, audio: { blob, duration }, recordingStream: null }));
+
+    // Push the user audio bubble first, then a fresh assistant claim message
+    // in `transcribing` state so we have a stable id to flip to `review`.
+    const transcribingMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      kind: "claim",
+      phase: { kind: "transcribing" },
+    };
+    setMessages((m) => [
+      // Drop the now-stale `voiceRecording` claim message.
+      ...m.filter(
+        (msg) =>
+          !(
+            msg.role === "assistant" &&
+            msg.kind === "claim" &&
+            (msg.phase.kind === "voiceRecording" || msg.phase.kind === "voice")
+          ),
+      ),
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        kind: "audio",
+        blob,
+        duration,
+        caption: "Voice note",
+      },
+      transcribingMsg,
+    ]);
+
+    try {
+      const { text } = await transcribeBlob(blob);
+      const transcript = text.trim();
+      setClaim((s) => ({ ...s, transcript: transcript || null }));
+      if (!transcript) {
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === transcribingMsg.id && msg.kind === "claim"
+              ? {
+                  ...msg,
+                  phase: {
+                    kind: "error",
+                    error: "Didn't catch that — re-record?",
+                  },
+                }
+              : msg,
+          ),
+        );
+        return;
+      }
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === transcribingMsg.id && msg.kind === "claim"
+            ? { ...msg, phase: { kind: "review", transcript, duration } }
+            : msg,
+        ),
+      );
+    } catch (err) {
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === transcribingMsg.id && msg.kind === "claim"
+            ? {
+                ...msg,
+                phase: {
+                  kind: "error",
+                  error: err instanceof Error ? err.message : String(err),
+                },
+              }
+            : msg,
+        ),
+      );
+    }
+  }
+
+  function confirmClaimTranscript() {
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        kind: "text",
+        text: "Sounds right",
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        kind: "claim",
+        phase: { kind: "photo" },
+      },
+    ]);
+  }
+
+  function rerecordClaimVoice() {
+    setClaim((s) => ({
+      ...s,
+      audio: null,
+      transcript: null,
+      recordingStream: null,
+    }));
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        kind: "claim",
+        phase: { kind: "voice" },
+      },
+    ]);
   }
 
   function cancelClaimVoice() {
@@ -339,8 +431,8 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   }
 
   function pickClaimPhoto(file: File) {
-    const audio = claim.audio;
-    if (!audio) return;
+    const transcript = claim.transcript;
+    if (!transcript) return;
     const preview = URL.createObjectURL(file);
     setClaim((s) => ({ ...s, photo: { file, preview } }));
 
@@ -371,7 +463,9 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       ),
     );
 
-    submitClaim({ image: file, audio: audio.blob, coverage: CLAIM_COVERAGE })
+    // Send the pre-transcribed text rather than the audio — backend skips
+    // its own Transcribe pass and the analysis lands ~5–8 s faster.
+    submitClaim({ image: file, transcript, coverage: CLAIM_COVERAGE })
       .then((result) => {
         ticker.cancel();
         setMessages((m) =>
@@ -381,7 +475,13 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
               : msg,
           ),
         );
-        setClaim({ active: false, photo: null, audio: null, recordingStream: null });
+        setClaim({
+          active: false,
+          photo: null,
+          audio: null,
+          transcript: null,
+          recordingStream: null,
+        });
       })
       .catch((err) => {
         ticker.cancel();
@@ -398,7 +498,13 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
               : msg,
           ),
         );
-        setClaim({ active: false, photo: null, audio: null, recordingStream: null });
+        setClaim({
+          active: false,
+          photo: null,
+          audio: null,
+          transcript: null,
+          recordingStream: null,
+        });
       });
   }
 
@@ -407,7 +513,13 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
   async function reset() {
     await resetChat(sessionId);
     setMessages([]);
-    setClaim({ active: false, photo: null, audio: null, recordingStream: null });
+    setClaim({
+      active: false,
+      photo: null,
+      audio: null,
+      transcript: null,
+      recordingStream: null,
+    });
   }
 
   const hasMessages = messages.length > 0;
@@ -428,6 +540,8 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
               onStartVoice={startClaimVoice}
               onStopVoice={stopClaimVoice}
               onCancelVoice={cancelClaimVoice}
+              onConfirmTranscript={confirmClaimTranscript}
+              onRerecord={rerecordClaimVoice}
               onNewClaim={startClaim}
             />
           ))
@@ -611,6 +725,8 @@ function MessageRow({
   onStartVoice,
   onStopVoice,
   onCancelVoice,
+  onConfirmTranscript,
+  onRerecord,
   onNewClaim,
 }: {
   msg: Message;
@@ -619,6 +735,8 @@ function MessageRow({
   onStartVoice: () => void;
   onStopVoice: () => void;
   onCancelVoice: () => void;
+  onConfirmTranscript: () => void;
+  onRerecord: () => void;
   onNewClaim: () => void;
 }) {
   if (msg.role === "user" && msg.kind === "image") {
@@ -658,6 +776,8 @@ function MessageRow({
         onStartVoice={onStartVoice}
         onStopVoice={onStopVoice}
         onCancelVoice={onCancelVoice}
+        onConfirmTranscript={onConfirmTranscript}
+        onRerecord={onRerecord}
         onNewClaim={onNewClaim}
         voiceMaxSeconds={CLAIM_VOICE_MAX_S}
       />
