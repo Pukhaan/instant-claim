@@ -135,7 +135,12 @@ def transcribe_audio(
         result["wall_time_s"] = round(time.time() - started, 2)
         return result
     except Exception as exc:  # noqa: BLE001 — broad catch is the whole point
-        log.warning("streaming transcribe failed (%s); falling back to batch", exc)
+        # `print` (not log) so Fly's stdout collector picks it up — uvicorn's
+        # default logger filters our module by default.
+        print(
+            f"[transcribe] streaming failed: {type(exc).__name__}: {exc!s} — falling back to batch",
+            flush=True,
+        )
     result = _transcribe_batch(audio_bytes, media_format, language_code)
     result["path"] = "batch"
     result["wall_time_s"] = round(time.time() - started, 2)
@@ -154,7 +159,7 @@ def _transcribe_streaming(
 ) -> dict[str, Any]:
     """Transcode in-process to PCM and stream to Transcribe Streaming."""
     pcm = _ffmpeg_to_pcm16(audio_bytes, source_format=media_format, sample_rate=16000)
-    text = asyncio.run(_run_streaming(pcm, language_code=language_code, sample_rate=16000))
+    text = _run_in_thread_loop(_run_streaming(pcm, language_code=language_code, sample_rate=16000))
     return {
         "text": text.strip(),
         "language": language_code,
@@ -200,6 +205,36 @@ def _ffmpeg_to_pcm16(audio_bytes: bytes, source_format: str, sample_rate: int) -
     if not proc.stdout:
         raise RuntimeError("ffmpeg produced no PCM output")
     return proc.stdout
+
+
+def _run_in_thread_loop(coro: Any, timeout_s: float = 30.0) -> Any:
+    """Run an async coroutine on a fresh event loop in a worker thread.
+
+    Required because FastAPI's request handler already owns an event loop, so
+    `asyncio.run` raises. Starting a new loop in a separate thread keeps the
+    streaming SDK's async machinery happy without making the whole transcribe
+    pipeline async (which would ripple into routes/claims.py).
+    """
+    result: dict[str, Any] = {}
+
+    def _runner() -> None:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            result["value"] = loop.run_until_complete(coro)
+        except Exception as exc:  # noqa: BLE001
+            result["error"] = exc
+        finally:
+            loop.close()
+
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+    t.join(timeout_s)
+    if t.is_alive():
+        raise TimeoutError(f"streaming transcribe did not finish in {timeout_s:.0f}s")
+    if "error" in result:
+        raise result["error"]
+    return result["value"]
 
 
 async def _run_streaming(pcm: bytes, language_code: str, sample_rate: int) -> str:
