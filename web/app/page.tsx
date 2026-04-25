@@ -92,15 +92,18 @@ export default async function HomePage() {
   return (
     <div className="snap min-h-[100dvh] w-full bg-[var(--finn-bg)] pb-8" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex w-full max-w-[420px] flex-col gap-[17px] px-[18px] pt-5">
-        {/* Header — avatar + name + QR */}
+        {/* Header — avatar + name + QR. Avatar PNG has the magenta ring +
+            bunq-Elite crown badge baked in, so we render it as one image. */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="relative h-10 w-10 rounded-full ring-2 ring-[#f0a]">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-700" />
-              <span className="absolute -top-1.5 left-[calc(50%-9px)] flex h-[18px] w-[18px] items-center justify-center text-[12px]">
-                {"\u{1F451}"}
-              </span>
-            </div>
+            <Image
+              src="/Avatar.png"
+              alt="Valeriu"
+              width={48}
+              height={48}
+              priority
+              className="h-12 w-12 shrink-0 object-contain"
+            />
             <div className="flex flex-col leading-tight">
               <span className="text-[13px] font-semibold text-[#f0a]">bunq Elite</span>
               <span className="text-[15px] font-semibold text-white">Valeriu</span>
