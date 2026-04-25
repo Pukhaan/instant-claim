@@ -265,6 +265,6 @@ Secrets are set with `flyctl secrets set NAME=value` (Fly) and via the Vercel da
 
 ## Built by
 
-**Andreas Kruszakin-Liboska** (`andreaskruszakin@gmail.com`) and **David Pukha** (`Pukhaan`) for the **bunq AI Agents Hackathon** (April 2026).
+**Andreas Kruszakin-Liboska** ([@andreaskruszakin](https://github.com/andreaskruszakin)), **David Pukha** ([@Pukhaan](https://github.com/Pukhaan)), and **Valeriu Ilicciev** ([@Valeriu01](https://github.com/Valeriu01)) for the **bunq AI Agents Hackathon** (April 2026).
 
 `api/app/bunq_client.py` adapted from the official [bunq hackathon toolkit](hackathon_toolkit/) (attribution in the file header). All Finn avatars and design language come from the team's *Finn-Insurance* Figma file.
