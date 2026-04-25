@@ -1,21 +1,18 @@
 "use client";
 
 // Snap-photo stage — third step of the claim flow. Mirrors Figma node 53:26
-// (SC-03 · Snap photo) 1:1: vertical-gradient viewfinder with a tilted damaged
-// rectangle, four white corner brackets, top controls (close / HDR / flash),
-// a tip pill, and a bottom toolbar with mode tabs + lime SNAP shutter.
+// (SC-03 · Snap photo) in spirit but built with flex so it lays out correctly
+// on any viewport — iPhone SE → iPhone 16 Pro Max, landscape, or desktop.
 //
-// The shutter only fires `onShutter`; the orchestrator opens the native
-// camera via <input type="file" accept="image/*" capture="environment">.
-
-import type { CSSProperties } from "react";
+// The shutter fires `onShutter`; the orchestrator opens the native camera via
+// <input type="file" accept="image/*" capture="environment">.
 
 type Props = {
-  /** Tap on the lime SNAP shutter — orchestrator opens the file/camera input. */
+  /** Fires when the lime SNAP shutter is tapped. */
   onShutter: () => void;
   onBack: () => void;
   onClose: () => void;
-  /** Optional category label, shown subtly above the tip pill. */
+  /** Shown subtly above the tip pill (e.g. "Damaged item"). */
   categoryLabel?: string;
 };
 
@@ -27,227 +24,139 @@ export default function CaptureStage({
 }: Props) {
   return (
     <div
-      className="snap relative h-[100dvh] w-full overflow-hidden bg-[#030304] text-white"
+      className="snap relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#030304] text-white"
       style={{
-        // Use safe-area insets so the toolbar/home-indicator sit correctly on
-        // notched devices, while still anchoring to the Figma 402x874 layout.
         paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      <div className="relative mx-auto h-full w-full max-w-[402px]">
-        {/* ──────────────────────────────────────────────────────────────
-           Viewfinder — vertical gradient + decorative damaged shape
-           ────────────────────────────────────────────────────────────── */}
-        <div
-          className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#0d0f1a] via-[#1a2129] to-[#050609]"
-          aria-hidden
-        >
-          {/* Tilted dark rounded rectangle — simulated damaged item */}
-          <div
-            className="absolute"
-            style={{
-              left: "66.46px",
-              top: "247px",
-              width: "222.784px",
-              height: "341.937px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <div style={{ transform: "rotate(8deg)" }}>
-              <div className="h-[320px] w-[180px] rounded-[28px] bg-gradient-to-r from-[#2e333d] to-[#1a1c24]" />
-            </div>
-          </div>
+      {/* Background — gradient + decorative damaged shape, behind everything */}
+      <Viewfinder />
 
-          {/* Crack lines — thin diagonal strokes at 10% white */}
-          <CrackLine left={120.49} top={337} width={113.276} rotate={20} />
-          <CrackLine left={150.87} top={377} width={119.674} rotate={5} />
-          <CrackLine left={121} top={396.16} width={118.437} rotate={-10} />
-          <CrackLine left={151} top={406.29} width={109.391} rotate={-25} />
-
-          {/* Four corner brackets — 28px arms, 3px thick, 85% opacity */}
-          {/* top-left */}
-          <span className="absolute h-[3px] w-[28px] bg-white opacity-85" style={{ left: 40, top: 200 }} />
-          <span className="absolute h-[28px] w-[3px] bg-white opacity-85" style={{ left: 40, top: 200 }} />
-          {/* top-right */}
-          <span className="absolute h-[3px] w-[28px] bg-white opacity-85" style={{ left: 334, top: 200 }} />
-          <span className="absolute h-[28px] w-[3px] bg-white opacity-85" style={{ left: 359, top: 200 }} />
-          {/* bottom-left */}
-          <span className="absolute h-[3px] w-[28px] bg-white opacity-85" style={{ left: 40, top: 617 }} />
-          <span className="absolute h-[28px] w-[3px] bg-white opacity-85" style={{ left: 40, top: 592 }} />
-          {/* bottom-right */}
-          <span className="absolute h-[3px] w-[28px] bg-white opacity-85" style={{ left: 334, top: 617 }} />
-          <span className="absolute h-[28px] w-[3px] bg-white opacity-85" style={{ left: 359, top: 592 }} />
-        </div>
-
-        {/* ──────────────────────────────────────────────────────────────
-           Top controls — close / HDR / flash
-           ────────────────────────────────────────────────────────────── */}
+      {/* Top row — close / HDR / flash */}
+      <div className="relative z-10 flex items-center justify-between px-4 pt-2">
         <button
           type="button"
-          aria-label="Close"
           onClick={onClose}
-          className="absolute flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(0,0,0,0.55)] text-white active:opacity-70"
-          style={{ left: 16, top: 70, fontFamily: "'SF Pro Rounded', system-ui, sans-serif", fontWeight: 600, fontSize: 14 }}
+          aria-label="Close camera"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white active:opacity-70"
         >
-          {/* Back is the same gesture as close in this view (no separate back chevron in Figma) */}
-          <span aria-hidden onDoubleClick={onBack}>✕</span>
+          <CloseIcon />
         </button>
 
         <div
-          className="absolute flex h-8 items-center justify-center rounded-2xl bg-[rgba(0,0,0,0.55)]"
-          style={{ left: 171, top: 74, width: 60 }}
+          className="flex h-8 items-center justify-center rounded-2xl bg-black/55 px-3"
           aria-hidden
         >
-          <span
-            className="text-white"
-            style={{
-              fontFamily: "'SF Pro Rounded', system-ui, sans-serif",
-              fontWeight: 900,
-              fontSize: 11,
-              letterSpacing: "0.04em",
-            }}
-          >
+          <span className="text-[11px] font-extrabold tracking-[0.04em] text-white">
             HDR
           </span>
         </div>
 
         <button
           type="button"
-          aria-label="Toggle flash"
-          className="absolute flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(0,0,0,0.55)] active:opacity-70"
-          style={{ left: 346, top: 70 }}
+          onClick={onBack}
+          aria-label="Back"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 active:opacity-70"
         >
-          <span
-            style={{
-              color: "#a8db45",
-              fontFamily: "'SF Pro Rounded', system-ui, sans-serif",
-              fontWeight: 600,
-              fontSize: 16,
-              lineHeight: 1,
-            }}
-          >
-            ⚡
-          </span>
+          <FlashIcon />
         </button>
+      </div>
 
-        {/* ──────────────────────────────────────────────────────────────
-           Optional category label — subtle, above the tip pill
-           ────────────────────────────────────────────────────────────── */}
+      {/* Viewfinder area — corner brackets float in the empty middle */}
+      <div className="relative z-10 flex flex-1 items-center justify-center px-10">
+        <div className="relative aspect-[3/4] w-full max-w-[320px]">
+          <Bracket pos="tl" />
+          <Bracket pos="tr" />
+          <Bracket pos="bl" />
+          <Bracket pos="br" />
+        </div>
+      </div>
+
+      {/* Tip pill + optional category label */}
+      <div className="relative z-10 mb-3 flex flex-col items-center gap-1.5">
         {categoryLabel ? (
-          <div
-            className="absolute left-0 right-0 flex justify-center"
-            style={{ top: 614 }}
-            aria-hidden
-          >
-            <span
-              className="rounded-full bg-[rgba(0,0,0,0.45)] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#a8db45]"
-              style={{ fontFamily: "'SF Pro Rounded', system-ui, sans-serif", fontWeight: 800 }}
-            >
-              {categoryLabel}
-            </span>
-          </div>
+          <span className="rounded-full bg-black/45 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#a8db45]">
+            {categoryLabel}
+          </span>
         ) : null}
-
-        {/* Tip pill — lime dot + "Frame the damage clearly" */}
-        <div
-          className="absolute flex items-center gap-2 rounded-[18px] bg-[rgba(0,0,0,0.55)]"
-          style={{ left: 71, top: 644, width: 260, height: 36, paddingLeft: 14 }}
-        >
-          <span className="block h-2 w-2 rounded-full bg-[#a8db45]" aria-hidden />
-          <span
-            className="text-white"
-            style={{
-              fontFamily: "'SF Pro Rounded', system-ui, sans-serif",
-              fontWeight: 600,
-              fontSize: 12,
-            }}
-          >
+        <div className="flex items-center gap-2 rounded-[18px] bg-black/55 px-4 py-2">
+          <span className="h-2 w-2 rounded-full bg-[#a8db45]" aria-hidden />
+          <span className="text-[12px] font-semibold text-white">
             Frame the damage clearly
           </span>
         </div>
+      </div>
 
-        {/* ──────────────────────────────────────────────────────────────
-           Bottom toolbar — VIDEO / PHOTO / CLAIM tabs + shutter
-           ────────────────────────────────────────────────────────────── */}
-        <div
-          className="absolute left-0 w-full bg-[rgba(0,0,0,0.55)]"
-          style={{ top: 696, height: 132 }}
-        >
-          {/* Mode tabs */}
-          <ModeLabel left={121} active={false} label="VIDEO" />
-          <ModeLabel left={201} active={false} label="PHOTO" />
-          <ModeLabel left={281} active label="CLAIM" />
+      {/* Bottom toolbar — mode tabs + shutter + library + flip */}
+      <div className="relative z-10 bg-black/55 pb-2 pt-2.5">
+        {/* Mode tabs */}
+        <div className="flex items-center justify-center gap-10 pb-1">
+          <ModeLabel active={false} label="VIDEO" />
+          <ModeLabel active={false} label="PHOTO" />
+          <div className="flex flex-col items-center gap-1">
+            <ModeLabel active label="CLAIM" />
+            <span className="h-1 w-1 rounded-full bg-[#a8db45]" aria-hidden />
+          </div>
+        </div>
 
-          {/* Active dot under "CLAIM" */}
-          <span
-            className="absolute h-1 w-1 rounded-full bg-[#a8db45]"
-            style={{ left: 279, top: 28 }}
-            aria-hidden
-          />
-
-          {/* Library / gallery button */}
+        {/* Shutter row */}
+        <div className="flex items-center justify-between px-6 pb-1 pt-1">
           <button
             type="button"
             aria-label="Open library"
-            className="absolute flex items-center justify-center rounded-[12px] border border-[rgba(255,255,255,0.2)] bg-[#333842] active:opacity-70"
-            style={{ left: 36, top: 56, width: 48, height: 48 }}
+            className="flex h-12 w-12 items-center justify-center rounded-[12px] border border-white/20 bg-[#333842] active:opacity-70"
           >
             <GridIcon />
           </button>
 
-          {/* Shutter — 82px white ring → 64px lime disc with SNAP label */}
           <button
             type="button"
             onClick={onShutter}
             aria-label="Take photo"
-            className="absolute flex items-center justify-center rounded-full bg-white active:opacity-90"
-            style={{ left: 160, top: 36, width: 82, height: 82 }}
+            className="flex h-[82px] w-[82px] items-center justify-center rounded-full bg-white active:opacity-90"
           >
-            <span
-              className="flex items-center justify-center rounded-full bg-[#a8db45]"
-              style={{ width: 64, height: 64 }}
-            >
-              <span
-                style={{
-                  fontFamily: "'SF Pro Rounded', system-ui, sans-serif",
-                  fontWeight: 900,
-                  fontSize: 11,
-                  letterSpacing: "0.06em",
-                  color: "#05070a",
-                }}
-              >
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#a8db45]">
+              <span className="text-[11px] font-extrabold tracking-[0.06em] text-[#05070a]">
                 SNAP
               </span>
             </span>
           </button>
 
-          {/* Flip-camera */}
           <button
             type="button"
             aria-label="Flip camera"
-            className="absolute flex items-center justify-center rounded-full bg-[#333842] text-white active:opacity-70"
-            style={{ left: 318, top: 56, width: 48, height: 48 }}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-[#333842] text-white active:opacity-70"
           >
             <FlipIcon />
           </button>
         </div>
-
-        {/* Home-indicator decorative bar */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 rounded-full bg-white/90"
-          style={{ bottom: 8, width: 144, height: 5 }}
-          aria-hidden
-        />
       </div>
     </div>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Helpers
+// Subcomponents
 // ────────────────────────────────────────────────────────────────────────────
+
+function Viewfinder() {
+  // Decorative "damaged phone" behind the viewfinder. Positioned via
+  // percentages so it stays roughly centred on any viewport. This is all
+  // decorative — the live photo replaces the backdrop anyway.
+  return (
+    <div
+      aria-hidden
+      className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#0d0f1a] via-[#1a2129] to-[#050609]"
+    >
+      <div className="absolute left-[30%] top-[35%] h-[40%] w-[40%] rotate-[8deg] rounded-[28px] bg-gradient-to-r from-[#2e333d] to-[#1a1c24]" />
+      <CrackLine left="35%" top="48%" width="30%" rotate={20} />
+      <CrackLine left="42%" top="53%" width="28%" rotate={5} />
+      <CrackLine left="34%" top="56%" width="30%" rotate={-10} />
+      <CrackLine left="42%" top="60%" width="26%" rotate={-25} />
+    </div>
+  );
+}
 
 function CrackLine({
   left,
@@ -255,75 +164,71 @@ function CrackLine({
   width,
   rotate,
 }: {
-  left: number;
-  top: number;
-  width: number;
+  left: string;
+  top: string;
+  width: string;
   rotate: number;
 }) {
-  const wrapStyle: CSSProperties = {
-    position: "absolute",
-    left,
-    top,
-    width,
-    height: 24,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
   return (
-    <div style={wrapStyle} aria-hidden>
-      <div
-        style={{
-          transform: `rotate(${rotate}deg)`,
-          width: 120,
-          height: 1.5,
-          background: "rgba(255,255,255,0.1)",
-        }}
-      />
-    </div>
+    <div
+      className="absolute h-[1.5px] bg-white/10"
+      style={{ left, top, width, transform: `rotate(${rotate}deg)` }}
+    />
   );
 }
 
-function ModeLabel({
-  left,
-  active,
-  label,
-}: {
-  left: number;
-  active: boolean;
-  label: string;
-}) {
+function Bracket({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
+  const map: Record<typeof pos, string> = {
+    tl: "top-0 left-0 border-t-[3px] border-l-[3px]",
+    tr: "top-0 right-0 border-t-[3px] border-r-[3px]",
+    bl: "bottom-0 left-0 border-b-[3px] border-l-[3px]",
+    br: "bottom-0 right-0 border-b-[3px] border-r-[3px]",
+  };
   return (
     <span
-      className="absolute -translate-x-1/2 text-center"
-      style={{
-        left,
-        top: 10,
-        width: 80,
-        fontFamily: "'SF Pro Rounded', system-ui, sans-serif",
-        fontWeight: active ? 900 : 500,
-        fontSize: 11,
-        letterSpacing: "0.08em",
-        color: active ? "#a8db45" : "#8c99a6",
-      }}
+      aria-hidden
+      className={`absolute h-7 w-7 border-white/85 ${map[pos]}`}
+    />
+  );
+}
+
+function ModeLabel({ active, label }: { active: boolean; label: string }) {
+  return (
+    <span
+      className={`text-[11px] tracking-[0.08em] ${
+        active
+          ? "font-extrabold text-[#a8db45]"
+          : "font-medium text-[#8c99a6]"
+      }`}
     >
       {label}
     </span>
   );
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Icons
+// ────────────────────────────────────────────────────────────────────────────
+
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M2 2l10 10M12 2L2 12" />
+    </svg>
+  );
+}
+
+function FlashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="#a8db45" aria-hidden>
+      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+    </svg>
+  );
+}
+
 function GridIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="text-white"
-      aria-hidden
-    >
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-white" aria-hidden>
       <rect x="3" y="3" width="14" height="14" rx="2" />
       <rect x="6.5" y="6.5" width="7" height="7" rx="1" fill="currentColor" stroke="none" />
     </svg>
@@ -332,17 +237,7 @@ function GridIcon() {
 
 function FlipIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M3.5 10a6.5 6.5 0 0 1 11.1-4.6L17 8" />
       <path d="M17 3.5V8h-4.5" />
       <path d="M16.5 10a6.5 6.5 0 0 1-11.1 4.6L3 12" />

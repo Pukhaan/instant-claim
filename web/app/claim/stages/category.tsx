@@ -6,8 +6,6 @@
 // fixed lime "Continue · {Category}" CTA at the bottom. Scoped under `.snap`
 // so the SF Pro Rounded font stack from globals.css applies automatically.
 
-import type { ReactNode } from "react";
-
 // ────────────────────────────────────────────────────────────────────────────
 // Public contract — orchestrator (claim-wizard.tsx) consumes these.
 // ────────────────────────────────────────────────────────────────────────────
@@ -260,24 +258,20 @@ function CategoryCard({
 // Inline SVG icons — clean, no external library
 // ────────────────────────────────────────────────────────────────────────────
 
-function withIcon(node: ReactNode): ReactNode {
-  return node;
-}
-
 function CategoryIcon({ id }: { id: CategoryId }) {
   switch (id) {
     case "damaged":
-      return withIcon(<WarningIcon />);
+      return <WarningIcon />;
     case "stolen":
-      return withIcon(<ProhibitIcon />);
+      return <ProhibitIcon />;
     case "medical":
-      return withIcon(<PlusCircleIcon />);
+      return <PlusCircleIcon />;
     case "travel":
-      return withIcon(<PlaneIcon />);
+      return <PlaneIcon />;
     case "vehicle":
-      return withIcon(<CarIcon />);
+      return <CarIcon />;
     case "other":
-      return withIcon(<SparkleIcon />);
+      return <SparkleIcon />;
   }
 }
 

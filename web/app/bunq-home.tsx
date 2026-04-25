@@ -238,11 +238,14 @@ function TabBar() {
       className="fixed inset-x-0 bottom-0 px-3"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
     >
-      <div className="flex h-[72px] items-center justify-around rounded-full border border-white/[0.06] bg-[rgba(27,30,35,0.85)] backdrop-blur-xl">
+      <div className="flex h-[72px] items-center justify-around rounded-full border border-white/[0.06] bg-[rgba(27,30,35,0.85)] backdrop-blur-md">
         {items.map((it) => (
-          <div
+          <button
             key={it.label}
-            className="flex flex-col items-center gap-1"
+            type="button"
+            aria-current={it.active ? "page" : undefined}
+            aria-label={it.label}
+            className="flex flex-col items-center gap-1 px-3 py-2 active:opacity-60"
             style={{ color: it.active ? "#6fbe5c" : "#8c99a6" }}
           >
             <span className="h-[18px] w-[18px]">{it.icon}</span>
@@ -250,7 +253,7 @@ function TabBar() {
             {it.active && (
               <span className="h-1 w-1 rounded-full bg-[#6fbe5c]" />
             )}
-          </div>
+          </button>
         ))}
       </div>
     </div>

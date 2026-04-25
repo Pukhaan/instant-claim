@@ -128,11 +128,13 @@ body {
   --snap-text-soft: #9aa08c;
   --snap-text-muted: #717a68;
 
-  /* Lime accent — primary action + Finn avatar + step pill */
-  --snap-lime: #c8f535;
-  --snap-lime-dim: rgba(200, 245, 53, 0.15);
-  --snap-lime-faint: rgba(200, 245, 53, 0.06);
-  --snap-lime-border: rgba(200, 245, 53, 0.22);
+  /* Lime accent — primary action + Finn avatar + step pill.
+     Canonical value is #a8db45 (matches Figma); older #c8f535 was used in
+     early mockups and must not diverge. */
+  --snap-lime: #a8db45;
+  --snap-lime-dim: rgba(168, 219, 69, 0.18);
+  --snap-lime-faint: rgba(168, 219, 69, 0.08);
+  --snap-lime-border: rgba(168, 219, 69, 0.35);
 
   /* Status accents */
   --snap-red: #ff6b6b;

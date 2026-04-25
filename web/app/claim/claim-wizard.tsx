@@ -19,6 +19,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Waveform from "../chat/waveform";
 import { submitClaim, type ClaimResponse, type Coverage } from "@/lib/claim";
@@ -91,7 +92,24 @@ type Stage =
   | { kind: "result"; result: ClaimResponse }
   | { kind: "error"; error: string };
 
+// Any stage that's holding an object-URL preview. Extracted so revoke calls
+// stay in sync with the Stage union.
+function stagePreview(s: Stage): string | null {
+  switch (s.kind) {
+    case "review":
+    case "voice":
+    case "voiceRecording":
+    case "voiceTranscribing":
+    case "confirm":
+      return s.preview;
+    default:
+      return null;
+  }
+}
+
 export default function ClaimWizard() {
+  const router = useRouter();
+
   const [stage, setStage] = useState<Stage>({
     kind: "category",
     selectedId: null,
@@ -103,22 +121,15 @@ export default function ClaimWizard() {
   const startedAtRef = useRef<number>(0);
   const tickerRef = useRef<{ cancel: () => void } | null>(null);
 
-  // Stage ref so cleanup effect can revoke the latest preview URL.
+  // Stage ref so imperative paths (timers, promises resolving after unmount)
+  // can still inspect the latest state without going through React.
   const stageRef = useRef<Stage>(stage);
   stageRef.current = stage;
 
   useEffect(() => {
     return () => {
-      const s = stageRef.current;
-      if (
-        s.kind === "review" ||
-        s.kind === "voice" ||
-        s.kind === "voiceRecording" ||
-        s.kind === "voiceTranscribing" ||
-        s.kind === "confirm"
-      ) {
-        URL.revokeObjectURL(s.preview);
-      }
+      const url = stagePreview(stageRef.current);
+      if (url) URL.revokeObjectURL(url);
     };
   }, []);
 
@@ -188,7 +199,7 @@ export default function ClaimWizard() {
             s.kind === "voiceRecording" ? { ...s, elapsed } : s,
           );
         }
-      }, 100) as unknown as number;
+      }, 100);
     } catch (err) {
       setStage({
         kind: "error",
@@ -251,12 +262,14 @@ export default function ClaimWizard() {
       timerRef.current = null;
     }
     recorderRef.current?.cancel();
-    if (stage.kind === "voiceRecording") {
+    const s = stageRef.current;
+    if (s.kind === "voiceRecording") {
+      // Keep the preview — user goes back to idle voice, not to capture.
       setStage({
         kind: "voice",
-        category: stage.category,
-        file: stage.file,
-        preview: stage.preview,
+        category: s.category,
+        file: s.file,
+        preview: s.preview,
       });
     }
   }
@@ -308,6 +321,8 @@ export default function ClaimWizard() {
     tickerRef.current?.cancel();
     if (timerRef.current) clearInterval(timerRef.current);
     recorderRef.current?.cancel();
+    const url = stagePreview(stageRef.current);
+    if (url) URL.revokeObjectURL(url);
     setStage({ kind: "category", selectedId: null });
   }
 
@@ -328,8 +343,8 @@ export default function ClaimWizard() {
               selectedId={stage.selectedId}
               onSelect={selectCategory}
               onContinue={continueFromCategory}
-              onBack={() => history.back()}
-              onClose={() => (window.location.href = "/")}
+              onBack={() => router.back()}
+              onClose={() => router.push("/")}
             />
           )}
 
@@ -339,7 +354,7 @@ export default function ClaimWizard() {
               onBack={() =>
                 setStage({ kind: "category", selectedId: stage.category.id })
               }
-              onClose={() => (window.location.href = "/")}
+              onClose={() => router.push("/")}
               categoryLabel={stage.category.label}
             />
           )}
@@ -359,7 +374,6 @@ export default function ClaimWizard() {
 
           {stage.kind === "voice" && (
             <VoiceScreen
-              category={stage.category}
               state="idle"
               onStart={startVoice}
               onStop={() => {}}
@@ -379,7 +393,6 @@ export default function ClaimWizard() {
 
           {stage.kind === "voiceRecording" && (
             <VoiceScreen
-              category={stage.category}
               state="recording"
               onStart={() => {}}
               onStop={stopVoice}
@@ -392,7 +405,6 @@ export default function ClaimWizard() {
 
           {stage.kind === "voiceTranscribing" && (
             <VoiceScreen
-              category={stage.category}
               state="transcribing"
               onStart={() => {}}
               onStop={() => {}}
@@ -604,7 +616,6 @@ function ReviewScreen({
 // ─────────── Voice screen ───────────
 
 function VoiceScreen({
-  category,
   state,
   onStart,
   onStop,
@@ -613,7 +624,6 @@ function VoiceScreen({
   elapsed,
   stream,
 }: {
-  category: Category;
   state: "idle" | "recording" | "transcribing";
   onStart: () => void;
   onStop: () => void;
@@ -622,7 +632,6 @@ function VoiceScreen({
   elapsed: number;
   stream: MediaStream | null;
 }) {
-  void category;
   const remaining = Math.max(0, MAX_RECORD_S - elapsed);
   return (
     <ScreenShell>
