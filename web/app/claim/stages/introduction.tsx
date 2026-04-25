@@ -171,7 +171,7 @@ export default function IntroductionStage({ onContinue, onBack }: Props) {
       <div className="px-5">
         {/* Avatar */}
         <div className="mt-6">
-          <FinnAvatar />
+          <FinnAvatar mood="happy" />
         </div>
 
         {/* Heading */}

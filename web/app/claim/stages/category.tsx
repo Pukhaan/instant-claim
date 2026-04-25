@@ -128,7 +128,7 @@ export default function CategoryStage({
 
       {/* Rainbow Finn avatar */}
       <div className="mt-6 px-5">
-        <FinnAvatar />
+        <FinnAvatar mood="thinking" />
       </div>
 
       {/* Heading */}

@@ -67,7 +67,7 @@ export default function ReviewStage({
 
       {/* Avatar */}
       <div className="mt-6 px-5">
-        <FinnAvatar size={80} />
+        <FinnAvatar size={80} mood="surprised" />
       </div>
 
       {/* Heading */}
