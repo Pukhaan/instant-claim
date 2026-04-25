@@ -1,82 +1,73 @@
-# Teller · Instant Claim — team snapshot
+# Team handoff
 
-A one-shot snapshot of the `Teller` / `Instant Claim` hackathon build. Everything
-you need to clone, install, and run is in this repo — including live API
-credentials in the `api/.env` and `web/.env.local` files.
+A 60-second checklist for collaborators cloning this repo. The full project narrative lives in [`README.md`](./README.md).
 
-> **This is a private team repo.** Do not fork publicly. The Anthropic key here
-> is a real billable key; the AWS creds are workshop session credentials and
-> expire after a few hours.
+> **Private repo.** Do not fork publicly. The `api/.env` file in this snapshot contains a real Anthropic key + workshop AWS session credentials.
 
-## What's inside
+## Quickstart
 
-- `api/` — FastAPI backend. Anthropic Claude (via **AWS Bedrock**, Sonnet 4.5),
-  AWS Transcribe / Polly / S3, bunq sandbox client.
-- `web/` — Next.js 16 frontend. Chat-first UI, live voice input, in-chat claim
-  flow (A-to-Z insurance triage), camera receipt scan.
-- `docs/PLAN.md` — the 24h attack plan mapped to judging criteria.
-- `docs/CHANGELOG.md` — reverse-chronological log of every change.
-- `hackathon_toolkit/` — the official bunq toolkit (reference).
-
-## Live
-
-- Frontend: <https://teller-eight.vercel.app>
-- Backend:  <https://teller-api.fly.dev> (`/health` for status)
-
-## Run it locally
-
-Two terminals.
-
-**Backend**
+**Prerequisites**: Python 3.13, Node.js 22+, [`ffmpeg`](https://ffmpeg.org/) (for the Transcribe Streaming path).
 
 ```bash
+# Backend
 cd api
-python3.13 -m venv .venv
-source .venv/bin/activate
+python3.13 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# .env is already committed in this snapshot — no copying needed.
-uvicorn app.main:app --reload --port 8000
-```
+uvicorn app.main:app --reload --port 8000   # .env is already in place
 
-First run auto-creates a new bunq sandbox user. To re-seed the account with
-€20K + 10 realistic merchant payments so claims have purchase matches:
-
-```bash
-curl -X POST http://localhost:8000/sandbox/seed
-```
-
-**Frontend**
-
-```bash
+# Frontend (separate terminal)
 cd web
 npm install
-npm run dev
+npm run dev   # .env.local is already in place
 ```
 
 Open <http://localhost:3000>.
 
-## Credentials (what's in the .env files)
+## Seed sandbox data
 
-`api/.env`:
+The bunq sandbox starts empty. Top up + add realistic merchant transactions in one call:
 
-- `ANTHROPIC_API_KEY` — only used as a fallback if `USE_BEDROCK=false`.
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` — workshop
-  STS session creds. **These expire.** If Bedrock / Transcribe / S3 start
-  returning `ExpiredToken`, grab fresh creds from the workshop console and
-  overwrite these three lines.
-- `BUNQ_API_KEY` — leave empty; the app auto-creates a sandbox user and caches
-  the key in `api/.bunq_sandbox_key` (gitignored).
+```bash
+curl -X POST http://localhost:8000/sandbox/seed | jq
+```
 
-`web/.env.local`:
+This is idempotent (skips if already run). Force a re-seed with `?force=true`.
 
-- `API_BASE_URL` — where the Next.js proxy forwards `/api/*` traffic. Default
-  `http://localhost:8000`. Override to `https://teller-api.fly.dev` to point
-  local dev at prod.
+## Live deployments
 
-## Deploy
+- **Frontend**: <https://teller-eight.vercel.app> (Vercel · CLI deploys)
+- **Backend**:  <https://teller-api.fly.dev> (Fly.io · `ams` region)
 
-- Backend → Fly.io: `cd api && flyctl deploy --remote-only`
-- Frontend → Vercel: `cd web && vercel deploy --prod --yes && vercel alias set <new-url> teller-eight.vercel.app`
+```bash
+# Ship a frontend change
+cd web && vercel deploy --prod --yes && vercel alias set <new-url> teller-eight.vercel.app
 
-The Fly.io app already has all the AWS + Anthropic secrets set via
-`flyctl secrets set`.
+# Ship a backend change
+cd api && flyctl deploy --remote-only
+```
+
+## Credentials
+
+`api/.env` (committed in this private snapshot, gitignored elsewhere):
+
+- **`ANTHROPIC_API_KEY`** — long-lived. Used only as a fallback when `USE_BEDROCK=false`.
+- **`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`** — workshop STS session creds. **They expire.** When Bedrock / Transcribe / S3 start returning `ExpiredToken`, refresh from the workshop console and overwrite the three lines.
+- **`BUNQ_API_KEY`** — leave empty. First boot creates a sandbox user and caches the key in `api/.bunq_sandbox_key` (gitignored, persisted to a Fly volume in prod).
+
+## Two remotes
+
+```text
+mine     → github.com/andreaskruszakin/instant-claim   (primary, Vercel deploys from here)
+handoff  → github.com/Pukhaan/instant-claim            (team mirror — David also pushes here)
+```
+
+`git push` defaults to `mine`. **Don't force-push `handoff`** — David's work lives there.
+
+## Troubleshooting
+
+- **`AWS_AUTH_CREDENTIALS_PROVIDER_IMDS_SOURCE_FAILURE` from Transcribe Streaming** → AWS session creds expired. Refresh `AWS_*` env vars.
+- **`asyncio.run() cannot be called from a running event loop`** → already fixed in `transcribe.py`; if it returns, you're calling `asyncio.run` from inside a FastAPI request — use `_run_in_thread_loop` instead.
+- **Build error `Cannot read properties of null (reading 'matches')`** during `npm install` → wipe and retry: `rm -rf web/node_modules web/package-lock.json && cd web && npm install`.
+- **`/api/*` returns 502 in prod** → Fly machine likely paused. `flyctl machine list -a teller-api` and `flyctl machine start <id>`.
+
+For everything else (architecture, tech choices, demo walkthrough), see [`README.md`](./README.md).
