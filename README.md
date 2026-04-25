@@ -86,7 +86,7 @@ Open **<https://teller-eight.vercel.app>** on a phone (works great on iPhone Saf
 2. **Tap "Start a Claim"** in the *Your Travel* card. Wizard takes over the screen.
 3. **Introduction** — Finn explains the three steps. Tap *Pick category*.
 4. **Category** — pick Device Damage, tap *Continue to camera*.
-5. **Camera** opens natively. Photograph a cracked phone (or use any photo with damage).
+5. **Camera** opens natively. Photograph **something that's actually broken** — a cracked phone screen, a smashed laptop lid, a dented iPad. The vision model is conservative on purpose: a clean undamaged item gets classified as `other`, the wizard won't proceed, and you'll just see Finn shrug. *(Out of breakable items? Google "cracked iPhone screen" and photograph your monitor.)*
 6. **Review Photo** — the red pill in the corner is dynamic. It shows `analyzing…` for ~1.5s, then the AI's actual finding: e.g. `iphone — cracked iphone screen`. Hit *Record voice note*.
 7. **Voice Note** — tap the red record button. Live waveform pulses. Say something like *"I dropped my iPhone walking out of a coffee shop and the screen cracked, repair quote was 120 euros."* Tap *Done — send to Finn*.
 8. **"Sound right?"** — your transcript, in your own words. Re-record link if it caught you wrong. Otherwise *Sounds right — analyze*.
@@ -94,6 +94,8 @@ Open **<https://teller-eight.vercel.app>** on a phone (works great on iPhone Saf
 10. **Payout Confirmed!** — *€95.00* approved, €25 deductible already applied. Claim ID, item, policy. Tap *Back to Homepage*.
 
 **Now try the unhappy path.** Repeat from step 4 but say *"my iPad got cracked"* in the voice note. There's no iPad in your bunq history — Finn escalates with: *"I can see your cracked screen and the damage looks covered, but I don't see an iPad purchase on your bunq account yet — let me loop in a human to help sort this out."* No reject; a human picks it up. That's the bar for "graceful, conservative, human-feeling AI" rather than gotcha behaviour.
+
+> **Testing tip for jurors:** the system is **end-to-end real**, not scripted. The vision model genuinely classifies what it sees and refuses to file a claim if you photograph something that isn't broken. The transaction matcher genuinely scans your last 30 bunq payments and escalates if the claimed item isn't there. So **always test with a photo of an actually-damaged item** — broken iPhone, cracked laptop screen, dented iPad — and **mention an item that's already in the seeded transactions** (iPhone, MacBook, Sony headphones, KLM flight). After a successful approve, the **`Quvos Insurance Payout`** transaction lands at the top of the home-screen recent-transactions list as a real bunq sandbox payment — that row only appears once a claim has actually been approved, never as demo dressing.
 
 ---
 

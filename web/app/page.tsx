@@ -224,16 +224,20 @@ export default async function HomePage() {
               // as the literal counterparty (the only auto-accepting payer
               // in sandbox), but the description carries the Claim ID. Show
               // them as a Quvos payout in the UI.
-              const isPayout = (t.description ?? "").startsWith("Claim SC-");
+              const rawDescription = t.description ?? "";
+              const isPayout = rawDescription.startsWith("Claim SC-");
               const counterparty = isPayout
                 ? "Quvos Insurance Payout"
-                : (t.counterparty ?? t.description ?? "Payment");
+                : (t.counterparty ?? rawDescription ?? "Payment");
+              // For payouts, strip the 'Claim SC-… · ' prefix so the row
+              // shows just the damage label ('Cracked iPhone Screen'). The
+              // full Claim ID is still on the result screen for traceability.
               const description = isPayout
-                ? (t.description ?? "")
-                : (t.description ?? "Online Payment");
+                ? rawDescription.replace(/^Claim SC-\S+\s*·\s*/u, "")
+                : (rawDescription || "Online Payment");
               const initial = isPayout
                 ? "Q"
-                : (t.counterparty || t.description || "?").trim().charAt(0).toUpperCase();
+                : (t.counterparty || rawDescription || "?").trim().charAt(0).toUpperCase();
               const amountColor = isPayout
                 ? "text-[var(--finn-success)]"
                 : "text-[var(--finn-orange)]";
@@ -242,36 +246,34 @@ export default async function HomePage() {
               return (
                 <div
                   key={t.id}
-                  className={`flex items-center justify-between px-2 pb-3 pt-0.5 ${
+                  className={`flex items-center gap-3 px-2 pb-3 pt-0.5 ${
                     last ? "" : "border-b border-[var(--finn-separator)]"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-[27px] ${
-                        isPayout ? "bg-[var(--finn-success)]" : "bg-white"
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[27px] ${
+                      isPayout ? "bg-[var(--finn-success)]" : "bg-white"
+                    }`}
+                  >
+                    <span
+                      className={`text-[19px] font-extrabold ${
+                        isPayout ? "text-[var(--finn-bg)]" : "text-black"
                       }`}
                     >
-                      <span
-                        className={`text-[19px] font-extrabold ${
-                          isPayout ? "text-[var(--finn-bg)]" : "text-black"
-                        }`}
-                      >
-                        {initial}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5 leading-tight">
-                      <p className="text-[18px] font-medium text-[var(--finn-text)]">
-                        {counterparty}
-                      </p>
-                      <p className="text-[14px] font-medium text-[var(--finn-muted)]">
-                        {description}
-                      </p>
-                    </div>
+                      {initial}
+                    </span>
                   </div>
-                  <p className={`tabular-nums ${amountColor}`}>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-tight">
+                    <p className="truncate text-[18px] font-medium text-[var(--finn-text)]">
+                      {counterparty}
+                    </p>
+                    <p className="truncate text-[14px] font-medium text-[var(--finn-muted)]">
+                      {description}
+                    </p>
+                  </div>
+                  <p className={`shrink-0 whitespace-nowrap tabular-nums ${amountColor}`}>
                     <span className="text-[17px] font-extrabold">
-                      € {sign}
+                      €&nbsp;{sign}
                       {amt.major},
                     </span>
                     <span className="text-[10.965px] font-extrabold">{amt.minor}</span>
