@@ -109,59 +109,53 @@ body {
   font-feature-settings: "cv11", "ss01";
 }
 
-/* Claim flow · iOS-native chrome with bunq orange accent.
-   Scoped under .snap. Color tokens mirror Apple's iOS dark-mode system
-   palette (systemBackground / secondarySystemBackground / label / fill etc.)
-   so the layout reads as a native iPhone app. The accent is bunq orange
-   (#FF6A00) instead of systemBlue. Typography uses the SF system stack,
-   which iOS Safari resolves to the actual San Francisco family. */
+/* SnapClaim + bunq home · matches the Finn-Insurance Figma 1:1.
+   Dark backgrounds + SF Pro Rounded (iOS Safari renders the real font, others
+   fall back gracefully). Scoped to .snap so the rest of Teller keeps its
+   orange-on-cream palette. Each surface mirrors the Figma exactly:
+   bunq home uses #05070a / #1c1c1e, claim wizard uses #0a0c09 / #141711. */
 .snap {
-  /* Apple iOS dark-mode backgrounds */
-  --ios-bg: #000000;
-  --ios-bg-2: #1c1c1e;
-  --ios-bg-3: #2c2c2e;
-  --ios-grouped-bg: #000000;
-  --ios-grouped-bg-2: #1c1c1e;
+  /* Backgrounds */
+  --snap-ink: #0a0c09;
+  --snap-surface: #141711;
+  --snap-surface-2: #1c1f18;
+  --snap-bunq-ink: #05070a;
+  --snap-bunq-surface: #1c1c1e;
+  --snap-bunq-divider: #464646;
 
-  /* Label colors (decreasing prominence) */
-  --ios-label: rgba(255, 255, 255, 1);
-  --ios-label-2: rgba(235, 235, 245, 0.6);
-  --ios-label-3: rgba(235, 235, 245, 0.3);
-  --ios-label-4: rgba(235, 235, 245, 0.18);
+  /* Text — three prominence levels */
+  --snap-text: #ecefe4;
+  --snap-text-soft: #9aa08c;
+  --snap-text-muted: #717a68;
 
-  /* Separators + fills */
-  --ios-separator: rgba(84, 84, 88, 0.65);
-  --ios-separator-opaque: #38383a;
-  --ios-fill-1: rgba(120, 120, 128, 0.36);
-  --ios-fill-2: rgba(120, 120, 128, 0.32);
-  --ios-fill-3: rgba(118, 118, 128, 0.24);
-  --ios-fill-4: rgba(118, 118, 128, 0.18);
+  /* Lime accent — primary action + Finn avatar + step pill */
+  --snap-lime: #c8f535;
+  --snap-lime-dim: rgba(200, 245, 53, 0.15);
+  --snap-lime-faint: rgba(200, 245, 53, 0.06);
+  --snap-lime-border: rgba(200, 245, 53, 0.22);
 
-  /* iOS systemColors (dark variant) */
-  --ios-blue: #0a84ff;
-  --ios-green: #30d158;
-  --ios-red: #ff453a;
-  --ios-orange: #ff9f0a;
-  --ios-yellow: #ffd60a;
+  /* Status accents */
+  --snap-red: #ff6b6b;
+  --snap-amber: #ffb340;
+  --snap-blue: #7ec4ff;
 
-  /* bunq orange — primary brand accent */
-  --bunq-orange: #ff6a00;
-  --bunq-orange-pressed: #d33f00;
-  --bunq-orange-tint: rgba(255, 106, 0, 0.16);
-  --bunq-orange-faint: rgba(255, 106, 0, 0.08);
+  /* Borders */
+  --snap-border: rgba(255, 255, 255, 0.08);
+  --snap-border-strong: rgba(255, 255, 255, 0.14);
 
-  background: var(--ios-bg);
-  color: var(--ios-label);
+  background: var(--snap-bunq-ink);
+  color: var(--snap-text);
+  /* SF Pro Rounded (iOS) → SF Pro (macOS) → system UI fallback. The Figma
+     uses SF Pro Rounded across the entire flow. Inter is the absolute last
+     resort for non-Apple devices. */
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-    "Helvetica Neue", system-ui, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display",
+    "SF Pro Text", "Helvetica Neue", "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01", "ss02";
 }
 
-.snap-rounded-mono {
-  font-family:
-    "SF Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", monospace;
+.snap-mono {
+  font-family: var(--font-mono-snap), "SF Mono", ui-monospace, monospace;
 }
 
 /* Stop iOS Safari zooming when an input gets focus — anything ≥16px doesn't
@@ -174,15 +168,17 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* iOS-style typographic scale. Sizes and weights match Apple HIG. */
-.snap .ios-large-title { font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: 0.37px; }
-.snap .ios-title-1 { font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: 0.36px; }
-.snap .ios-title-2 { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: 0.35px; }
-.snap .ios-title-3 { font-size: 20px; line-height: 25px; font-weight: 600; letter-spacing: 0.38px; }
-.snap .ios-headline { font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.41px; }
-.snap .ios-body { font-size: 17px; line-height: 22px; font-weight: 400; letter-spacing: -0.41px; }
-.snap .ios-callout { font-size: 16px; line-height: 21px; font-weight: 400; letter-spacing: -0.32px; }
-.snap .ios-subhead { font-size: 15px; line-height: 20px; font-weight: 400; letter-spacing: -0.24px; }
-.snap .ios-footnote { font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: -0.08px; }
-.snap .ios-caption-1 { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
-.snap .ios-caption-2 { font-size: 11px; line-height: 13px; font-weight: 400; letter-spacing: 0.06px; }
+/* Type scale matching the SnapClaim Figma sample sizes. Smaller and tighter
+   than full Apple HIG — the design uses Syne with very tight tracking. */
+.snap .snap-display { font-size: 26px; line-height: 1.1; font-weight: 700; letter-spacing: -0.6px; }
+.snap .snap-display-lg { font-size: 32px; line-height: 1.05; font-weight: 700; letter-spacing: -0.7px; }
+.snap .snap-display-xl { font-size: 44px; line-height: 1.05; font-weight: 800; letter-spacing: -0.8px; }
+.snap .snap-display-num { font-size: 64px; line-height: 1; font-weight: 700; letter-spacing: -1.2px; }
+.snap .snap-headline { font-size: 15px; line-height: 1.3; font-weight: 600; letter-spacing: -0.2px; }
+.snap .snap-body { font-size: 13.5px; line-height: 1.5; font-weight: 400; letter-spacing: -0.1px; }
+.snap .snap-meta { font-size: 12.5px; line-height: 1.4; font-weight: 400; letter-spacing: -0.05px; }
+.snap .snap-caption {
+  font-family: var(--font-mono-snap), ui-monospace, monospace;
+  font-size: 10.5px; line-height: 1.2; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
