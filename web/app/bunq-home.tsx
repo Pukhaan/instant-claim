@@ -5,6 +5,7 @@
 // the Bank Accounts list, and a SnapClaim entry that routes to /claim.
 
 import Link from "next/link";
+import FinnAvatar from "./finn-avatar";
 
 export default function BunqHome() {
   return (
@@ -210,7 +211,7 @@ function YourTravel() {
       </h2>
       <div className="mt-2 rounded-2xl bg-[#1c1c1e] px-5 py-6 text-center">
         <div className="flex justify-center">
-          <RainbowFinn size={80} />
+          <FinnAvatar size={80} />
         </div>
         <h3 className="mt-4 text-[18px] font-bold leading-tight tracking-tight text-white">
           Something Happened? No worries!

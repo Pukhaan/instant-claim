@@ -6,6 +6,7 @@
 // transitions; this screen has no Continue CTA of its own.
 
 import Waveform from "../../chat/waveform";
+import FinnAvatar from "../../finn-avatar";
 
 type VoiceState = "idle" | "recording" | "transcribing";
 
@@ -97,7 +98,7 @@ export default function VoiceStage({
 
       {/* ── Rainbow Finn ────────────────────────────────────────────────── */}
       <div className="mt-6 px-5">
-        <RainbowFinn size={80} />
+        <FinnAvatar size={80} />
       </div>
 
       {/* ── Heading ─────────────────────────────────────────────────────── */}

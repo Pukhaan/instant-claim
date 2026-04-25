@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import FinnAvatar from "../../finn-avatar";
 
 type Props = {
   onContinue: () => void;
@@ -170,7 +171,7 @@ export default function IntroductionStage({ onContinue, onBack }: Props) {
       <div className="px-5">
         {/* Avatar */}
         <div className="mt-6">
-          <RainbowFinn />
+          <FinnAvatar />
         </div>
 
         {/* Heading */}

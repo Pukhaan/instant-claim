@@ -1,5 +1,7 @@
 "use client";
 
+import FinnAvatar from "../../finn-avatar";
+
 // SnapClaim · Stage 2 — "What kind of mishap do you want to report?"
 // Figma node 95:249 (frame 2/6). Single inset list with radios on a dark
 // canvas (#05070a). Scoped under `.snap` so the SF Pro Rounded font stack
@@ -126,7 +128,7 @@ export default function CategoryStage({
 
       {/* Rainbow Finn avatar */}
       <div className="mt-6 px-5">
-        <RainbowFinn />
+        <FinnAvatar />
       </div>
 
       {/* Heading */}

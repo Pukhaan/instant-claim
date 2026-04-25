@@ -1,5 +1,7 @@
 "use client";
 
+import FinnAvatar from "../../finn-avatar";
+
 // Verify stage — only shown for device-damage claims. Matches the same
 // chrome as every other claim stage (intro / category / review / voice /
 // confirm / result): single back-button nav, 6-segment progress bar, 80×80
@@ -70,7 +72,7 @@ export default function VerifyStage({
 
       {/* Rainbow Finn avatar */}
       <div className="mt-6 px-5">
-        <RainbowFinn />
+        <FinnAvatar />
       </div>
 
       {/* Heading */}

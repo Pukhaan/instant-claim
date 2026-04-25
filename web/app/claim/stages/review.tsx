@@ -1,5 +1,7 @@
 "use client";
 
+import FinnAvatar from "../../finn-avatar";
+
 type Props = {
   previewUrl: string;
   onRetake: () => void;
@@ -65,7 +67,7 @@ export default function ReviewStage({
 
       {/* Avatar */}
       <div className="mt-6 px-5">
-        <RainbowFinn size={80} />
+        <FinnAvatar size={80} />
       </div>
 
       {/* Heading */}
