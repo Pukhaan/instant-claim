@@ -34,7 +34,9 @@ export default function BunqHome() {
 
       <BankAccounts />
 
-      <SnapClaimEntry />
+      <YourTravel />
+
+      <RecentTransactions />
 
       <TabBar />
     </div>
@@ -48,13 +50,30 @@ export default function BunqHome() {
 function ProfileRow() {
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full border border-[#ac626c] bg-gradient-to-br from-[#ac626c] to-[#5a2630] text-[18px] font-bold text-white">
-          V
+      <div className="flex items-center gap-3">
+        {/* Avatar with magenta-pink rim — bunq Elite tier marker */}
+        <div
+          className="relative flex h-[52px] w-[52px] items-center justify-center rounded-full"
+          style={{
+            background:
+              "conic-gradient(from 0deg, #ff2d92, #ff7819, #ff2d92, #c41fa6, #ff2d92)",
+            padding: "2px",
+          }}
+        >
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#3a2a35] to-[#1a1015] text-[18px] font-bold text-white">
+            V
+          </div>
+          {/* Tiny "Elite" badge anchored top-right */}
+          <span
+            aria-hidden
+            className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#ff2d92] text-[10px] font-bold text-white"
+          >
+            ✦
+          </span>
         </div>
         <div className="text-[13px] font-semibold leading-[15px]">
-          <p className="text-[#98989f]">Good evening,</p>
-          <p className="text-white">Valeriu</p>
+          <p className="text-[#ff2d92]">bunq Elite</p>
+          <p className="mt-0.5 text-white">Valeriu</p>
         </div>
       </div>
       <button
@@ -179,45 +198,181 @@ function BankAccounts() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// SnapClaim entry — the demo's hero CTA, routes to /claim
+// Your Travel — entry to the claim flow, replaces the old SnapClaim card.
+// Centered rainbow Finn avatar + headline + Start a Claim link.
 // ────────────────────────────────────────────────────────────────────────────
 
-function SnapClaimEntry() {
+function YourTravel() {
   return (
-    <section className="mt-5 px-5">
-      <Link
-        href="/claim"
-        className="relative block overflow-hidden rounded-2xl border border-[rgba(168,219,69,0.35)] bg-[#12151a] active:opacity-90"
-      >
-        {/* Lime left strip */}
-        <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#a8db45]" />
-        <div className="px-6 py-5 pr-[112px]">
-          <span className="inline-flex items-center justify-center rounded-full bg-[rgba(168,219,69,0.18)] px-3 py-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.8px] text-[#a8db45]">
-              New
-            </span>
-          </span>
-          <h3 className="mt-2 text-[22px] font-bold leading-[1.2] tracking-tight text-white">
-            Something happen?
-          </h3>
-          <p className="mt-1 text-[13px] leading-[18px] text-[#8c99a6]">
-            Snap a photo. Tell Finn what happened.
-            <br />
-            Get paid in 30s.
-          </p>
+    <section className="mt-7 px-5">
+      <h2 className="px-4 text-[18px] font-bold leading-[1.2] text-[#f5f7fa]">
+        Your Travel
+      </h2>
+      <div className="mt-2 rounded-2xl bg-[#1c1c1e] px-5 py-6 text-center">
+        <div className="flex justify-center">
+          <RainbowFinn size={80} />
         </div>
-
-        {/* Lime icon + caption stacked on the right */}
-        <div className="absolute right-5 top-7 flex flex-col items-center">
-          <div className="flex h-[60px] w-[60px] items-center justify-center rounded-full bg-[#a8db45]">
-            <BoltIcon className="h-7 w-7 text-[#05070a]" />
-          </div>
-          <p className="mt-1 text-[11px] font-black uppercase tracking-[0.44px] text-[#a8db45]">
-            SnapClaim
-          </p>
-        </div>
-      </Link>
+        <h3 className="mt-4 text-[18px] font-bold leading-tight tracking-tight text-white">
+          Something Happened? No worries!
+        </h3>
+        <p className="mt-2 text-[13px] leading-[19px] text-[#8c99a6]">
+          Finn, your assistant, will walk you through it. Photo, voice
+          note, done. Usually settled in under a minute.
+        </p>
+        <Link
+          href="/claim"
+          className="mt-3 inline-flex h-9 items-center justify-center text-[16px] font-bold text-[#0096ff] active:opacity-60"
+        >
+          Start a Claim
+        </Link>
+      </div>
     </section>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Recent Transactions — small list under Your Travel
+// ────────────────────────────────────────────────────────────────────────────
+
+function RecentTransactions() {
+  return (
+    <section className="mt-7 px-5">
+      <div className="flex items-center justify-between px-4">
+        <h2 className="text-[18px] font-bold leading-[1.2] text-[#f5f7fa]">
+          Recent Transactions
+        </h2>
+        <button
+          type="button"
+          className="text-[13px] font-semibold text-[#0096ff] active:opacity-60"
+        >
+          See all
+        </button>
+      </div>
+      <div className="mt-2 rounded-2xl bg-[#1c1c1e] p-2">
+        <TxRow
+          merchantInitial="N"
+          merchantBg="#ffffff"
+          merchantColor="#000000"
+          name="Notion"
+          sub="Online Payment"
+          amount="-2,89"
+          amountColor="#ff7819"
+        />
+      </div>
+    </section>
+  );
+}
+
+function TxRow({
+  merchantInitial,
+  merchantBg,
+  merchantColor,
+  name,
+  sub,
+  amount,
+  amountColor,
+}: {
+  merchantInitial: string;
+  merchantBg: string;
+  merchantColor: string;
+  name: string;
+  sub: string;
+  amount: string;
+  amountColor: string;
+}) {
+  return (
+    <div className="flex items-center justify-between px-3 py-3">
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-[44px] w-[44px] items-center justify-center rounded-full text-[18px] font-bold"
+          style={{ background: merchantBg, color: merchantColor }}
+        >
+          {merchantInitial}
+        </div>
+        <div>
+          <p className="text-[16px] font-semibold leading-tight text-white">
+            {name}
+          </p>
+          <p className="mt-0.5 text-[13px] leading-tight text-[#8c99a6]">
+            {sub}
+          </p>
+        </div>
+      </div>
+      <p
+        className="text-[17px] font-bold tracking-tight"
+        style={{ color: amountColor }}
+      >
+        € {amount}
+      </p>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Rainbow Finn — same character used inside the claim flow
+// ────────────────────────────────────────────────────────────────────────────
+
+function RainbowFinn({ size = 80 }: { size?: number }) {
+  const eyeOffsetTop = size * 0.36;
+  const eyeWidth = size * 0.07;
+  const eyeHeight = size * 0.13;
+  const eyeFromCenter = size * 0.18;
+  return (
+    <div
+      className="relative rounded-full"
+      style={{
+        width: size,
+        height: size,
+        background:
+          "conic-gradient(from 0deg, #ff3b30, #ff9500, #ffcc00, #34c759, #00e0ff, #0088ff, #ff2d92, #ff3b30)",
+        padding: 2.5,
+      }}
+      aria-hidden
+    >
+      <div
+        className="relative flex h-full w-full items-center justify-center rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 35%, #2a1f3a 0%, #0a0710 100%)",
+        }}
+      >
+        <span
+          className="absolute rounded-full bg-white"
+          style={{
+            width: eyeWidth,
+            height: eyeHeight,
+            top: eyeOffsetTop,
+            left: `calc(50% - ${eyeFromCenter}px - ${eyeWidth / 2}px)`,
+          }}
+        />
+        <span
+          className="absolute rounded-full bg-white"
+          style={{
+            width: eyeWidth,
+            height: eyeHeight,
+            top: eyeOffsetTop,
+            right: `calc(50% - ${eyeFromCenter}px - ${eyeWidth / 2}px)`,
+          }}
+        />
+        <svg
+          className="absolute"
+          style={{
+            top: size * 0.55,
+            width: size * 0.4,
+            height: size * 0.18,
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+          viewBox="0 0 32 14"
+          fill="none"
+          stroke="white"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        >
+          <path d="M3 3c2.5 5 8 8 13 8s10.5-3 13-8" />
+        </svg>
+      </div>
+    </div>
   );
 }
 

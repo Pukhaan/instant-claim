@@ -38,6 +38,7 @@ import CategoryStage, {
   type CategoryId,
 } from "./stages/category";
 import CaptureStage from "./stages/capture";
+import IntroductionStage from "./stages/introduction";
 import VerifyStage from "./stages/verify";
 
 const MAX_RECORD_S = 20;
@@ -47,14 +48,14 @@ const MAX_RECORD_S = 20;
 // the rest fall back to default (the LLM still routes them).
 const COVERAGE_MAP: Record<CategoryId, Coverage> = {
   damaged: "phone",
-  stolen: "phone",
-  medical: "default",
   travel: "travel",
-  vehicle: "default",
+  medical: "default",
+  luggage: "travel",
   other: "default",
 };
 
 type Stage =
+  | { kind: "intro" }
   | { kind: "category"; selectedId: CategoryId | null }
   | {
       kind: "verify";
@@ -117,10 +118,7 @@ function stagePreview(s: Stage): string | null {
 export default function ClaimWizard() {
   const router = useRouter();
 
-  const [stage, setStage] = useState<Stage>({
-    kind: "category",
-    selectedId: null,
-  });
+  const [stage, setStage] = useState<Stage>({ kind: "intro" });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
@@ -346,7 +344,7 @@ export default function ClaimWizard() {
     recorderRef.current?.cancel();
     const url = stagePreview(stageRef.current);
     if (url) URL.revokeObjectURL(url);
-    setStage({ kind: "category", selectedId: null });
+    setStage({ kind: "intro" });
   }
 
   // ───────── render ─────────
@@ -361,12 +359,21 @@ export default function ClaimWizard() {
           exit={{ opacity: 0, x: -16 }}
           transition={{ duration: 0.22, ease: [0.2, 0.7, 0.3, 1] }}
         >
+          {stage.kind === "intro" && (
+            <IntroductionStage
+              onContinue={() =>
+                setStage({ kind: "category", selectedId: null })
+              }
+              onBack={() => router.push("/")}
+            />
+          )}
+
           {stage.kind === "category" && (
             <CategoryStage
               selectedId={stage.selectedId}
               onSelect={selectCategory}
               onContinue={continueFromCategory}
-              onBack={() => router.back()}
+              onBack={() => setStage({ kind: "intro" })}
               onClose={() => router.push("/")}
             />
           )}
