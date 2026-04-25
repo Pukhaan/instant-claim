@@ -984,9 +984,16 @@ function ConfirmScreen({
         </p>
       </div>
 
-      <ActionPill tone="orange" icon={<RetakeIcon />} onClick={onRerecord} className="mt-4">
+      <button
+        type="button"
+        onClick={onRerecord}
+        className="mt-3 inline-flex items-center gap-1.5 self-start text-[13px] font-semibold text-[var(--finn-blue)] active:opacity-60 transition-opacity"
+      >
+        <span aria-hidden className="flex h-4 w-4 items-center justify-center">
+          <RetakeIcon />
+        </span>
         Re-record
-      </ActionPill>
+      </button>
 
       <div className="mt-auto pt-6">
         <BottomCTA caption="I'll match this with your bunq history + policy" onClick={onConfirm}>
@@ -1366,7 +1373,7 @@ function ChevronLeft() {
 
 function RetakeIcon() {
   return (
-    <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M2 7a5 5 0 1 1 1.5 3.5" />
       <path d="M2 4v3h3" />
     </svg>
