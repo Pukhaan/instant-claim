@@ -59,8 +59,12 @@
   --color-accent-subtle: var(--accent-subtle);
   --color-accent-border: var(--accent-border);
   --color-danger: var(--danger);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  /* Tailwind font utilities — `font-sans` resolves to the SF Pro Rounded
+     system stack; `font-mono` to DM Mono (loaded in layout.tsx). */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display",
+    "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: var(--font-mono-snap), "SF Mono", ui-monospace, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -105,8 +109,14 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  font-feature-settings: "cv11", "ss01";
+  /* SF Pro Rounded everywhere. On iOS/iPadOS/macOS Safari this resolves to
+     the actual San Francisco Rounded family; elsewhere the stack falls back
+     through Helvetica Neue to the OS system UI font. */
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display",
+    "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01";
 }
 
 /* SnapClaim + bunq home · matches the Finn-Insurance Figma 1:1.
