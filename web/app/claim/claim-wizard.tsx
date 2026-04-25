@@ -23,6 +23,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Waveform from "../chat/waveform";
 import { submitClaim, type ClaimResponse, type Coverage } from "@/lib/claim";
@@ -149,6 +150,7 @@ const SECTION_LABELS: Record<Stage["kind"], string> = {
 
 export default function ClaimWizard() {
   const [stage, setStage] = useState<Stage>({ kind: "intro" });
+  const router = useRouter();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
@@ -385,7 +387,10 @@ export default function ClaimWizard() {
   function backOneStep() {
     switch (stage.kind) {
       case "intro":
-        return; // already at start
+        // Tap-back on the Introduction screen leaves the claim flow entirely
+        // and returns the user to the bunq home.
+        router.push("/");
+        return;
       case "category":
         setStage({ kind: "intro" });
         return;
