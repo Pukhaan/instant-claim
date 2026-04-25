@@ -27,7 +27,7 @@ import { useEffect, useRef, useState } from "react";
 import Waveform from "../chat/waveform";
 import { submitClaim, type ClaimResponse, type Coverage } from "@/lib/claim";
 import { formatEUR } from "@/lib/format";
-import { classifyPhoto } from "@/lib/photo-classify";
+import { classifyPhoto, type ClassifyResult } from "@/lib/photo-classify";
 import { createRecorder, transcribeBlob, type RecorderHandle } from "@/lib/voice";
 import {
   cycleSubmitSteps,
@@ -59,18 +59,26 @@ type Stage =
   | { kind: "intro" }
   | { kind: "category"; selected: Category | null }
   | { kind: "capture"; category: Category }
-  | { kind: "review"; category: Category; file: File; preview: string }
+  | {
+      kind: "review";
+      category: Category;
+      file: File;
+      preview: string;
+      classification: ClassifyResult | null;
+    }
   | {
       kind: "voice";
       category: Category;
       file: File;
       preview: string;
+      classification: ClassifyResult | null;
     }
   | {
       kind: "voiceRecording";
       category: Category;
       file: File;
       preview: string;
+      classification: ClassifyResult | null;
       elapsed: number;
       stream: MediaStream | null;
     }
@@ -79,6 +87,7 @@ type Stage =
       category: Category;
       file: File;
       preview: string;
+      classification: ClassifyResult | null;
       blob: Blob;
       duration: number;
     }
@@ -87,6 +96,7 @@ type Stage =
       category: Category;
       file: File;
       preview: string;
+      classification: ClassifyResult | null;
       transcript: string;
       duration: number;
     }
@@ -189,7 +199,21 @@ export default function ClaimWizard() {
     const category = s.category;
     if (s.kind === "review") URL.revokeObjectURL(s.preview);
     const preview = URL.createObjectURL(file);
-    setStage({ kind: "review", category, file, preview });
+    setStage({ kind: "review", category, file, preview, classification: null });
+
+    // Classify in the background so the Review screen's pill can label what
+    // Finn actually sees (e.g. "iPhone — cracked screen") instead of the
+    // hardcoded placeholder. Failures are silent — pill just falls back to a
+    // generic label.
+    classifyPhoto(file)
+      .then((classification) => {
+        setStage((cur) =>
+          cur.kind === "review" && cur.file === file
+            ? { ...cur, classification }
+            : cur,
+        );
+      })
+      .catch(() => {});
   }
 
   function retakePhoto() {
@@ -206,6 +230,7 @@ export default function ClaimWizard() {
       category: stage.category,
       file: stage.file,
       preview: stage.preview,
+      classification: stage.classification,
     });
   }
 
@@ -223,6 +248,7 @@ export default function ClaimWizard() {
         category: base.category,
         file: base.file,
         preview: base.preview,
+        classification: base.classification,
         elapsed: 0,
         stream,
       });
@@ -262,6 +288,7 @@ export default function ClaimWizard() {
         category: s.category,
         file: s.file,
         preview: s.preview,
+        classification: s.classification,
         blob,
         duration,
       });
@@ -279,6 +306,7 @@ export default function ClaimWizard() {
         category: s.category,
         file: s.file,
         preview: s.preview,
+        classification: s.classification,
         transcript,
         duration,
       });
@@ -302,6 +330,7 @@ export default function ClaimWizard() {
         category: stage.category,
         file: stage.file,
         preview: stage.preview,
+        classification: stage.classification,
       });
     }
   }
@@ -313,6 +342,7 @@ export default function ClaimWizard() {
       category: stage.category,
       file: stage.file,
       preview: stage.preview,
+      classification: stage.classification,
     });
   }
 
@@ -369,6 +399,7 @@ export default function ClaimWizard() {
           category: stage.category,
           file: stage.file,
           preview: stage.preview,
+          classification: stage.classification,
         });
         return;
       case "voiceRecording":
@@ -421,6 +452,7 @@ export default function ClaimWizard() {
             <ReviewScreen
               category={stage.category}
               previewUrl={stage.preview}
+              classification={stage.classification}
               onRetake={retakePhoto}
               onContinue={continueToVoice}
             />
@@ -738,15 +770,31 @@ function Bracket({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
 function ReviewScreen({
   category,
   previewUrl,
+  classification,
   onRetake,
   onContinue,
 }: {
   category: Category;
   previewUrl: string;
+  classification: ClassifyResult | null;
   onRetake: () => void;
   onContinue: () => void;
 }) {
   void category;
+  // Pill label = whatever the AI actually saw. Falls back to a friendly
+  // placeholder while the classify-photo round-trip is in flight, and to a
+  // generic "evidence" label if it never returns (network blip etc.).
+  const pillLabel = classification
+    ? formatPhotoPill(classification)
+    : "analyzing\u2026";
+  const pillColor =
+    classification?.kind === "damage"
+      ? "var(--finn-danger)"
+      : classification?.kind === "receipt"
+        ? "var(--finn-blue)"
+        : classification
+          ? "var(--finn-orange)"
+          : "rgba(255,255,255,0.18)";
   return (
     <div className="flex flex-1 flex-col px-[18px] pb-6 pt-5">
       <FinnAvatar variant="neutral" />
@@ -763,8 +811,11 @@ function ReviewScreen({
       <div className="relative mt-4 h-[240px] overflow-hidden rounded-[12px] bg-[var(--finn-card)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={previewUrl} alt="Captured evidence" className="block h-full w-full object-cover" />
-        <span className="absolute right-3 top-3 rounded-md bg-[var(--finn-danger)] px-2.5 py-1 text-[10px] font-extrabold tracking-[0.04em] text-[var(--finn-bg)]">
-          cracked screen
+        <span
+          className="absolute right-3 top-3 max-w-[80%] truncate rounded-md px-2.5 py-1 text-[10px] font-extrabold tracking-[0.04em] text-[var(--finn-bg)] transition-colors"
+          style={{ background: pillColor }}
+        >
+          {pillLabel}
         </span>
       </div>
 
@@ -1166,7 +1217,7 @@ function ResultScreen({
             color: isApproved ? "var(--finn-bg)" : "var(--finn-text)",
           }}
         >
-          Done — Back to Homepage
+          Back to Homepage
         </Link>
       </div>
     </div>
@@ -1402,6 +1453,12 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-// `classifyPhoto` is imported for future use by the wizard — keep the
-// reference so the dead-code linter stays quiet.
-void classifyPhoto;
+/** Compose a tight label out of a ClassifyResult so the Review-screen pill
+ *  reads "iPhone — cracked screen" instead of just "damage". Falls back
+ *  gracefully when the model only returned one of the two fields. */
+function formatPhotoPill(c: ClassifyResult): string {
+  const subject = c.subject?.trim();
+  const summary = c.summary?.trim();
+  if (subject && summary) return `${subject} \u2014 ${summary}`.toLowerCase();
+  return (subject || summary || c.kind || "evidence").toLowerCase();
+}

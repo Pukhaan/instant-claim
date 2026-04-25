@@ -9,8 +9,30 @@
 import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
+
+// Server action — Sugar-Daddy top-up wired to the bunq sandbox.
+// Submitting the Add Money form posts here, requests €500 from Sugar Daddy
+// (the sandbox's faucet), then revalidates the page so the balance + recent
+// transactions refresh on the next render.
+async function topUp() {
+  "use server";
+  try {
+    const h = await headers();
+    const host = h.get("host") ?? "localhost:3000";
+    const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+    await fetch(`${proto}://${host}/api/sandbox/topup?amount_eur=500`, {
+      method: "POST",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    // Best-effort — if it fails we just don't refresh.
+  }
+  revalidatePath("/");
+}
 
 type Account = {
   id: number;
@@ -116,17 +138,20 @@ export default async function HomePage() {
           </span>
         </div>
 
-        {/* Action row — Pay / Request / Add Money */}
-        <div className="flex items-center gap-3">
+        {/* Action row — Pay / Request / Add Money. Add Money is wired to the
+            Sugar-Daddy faucet so the demo can refill in one tap. */}
+        <div className="flex items-stretch gap-2.5">
           <ActionButton tone="orange" icon={<UpArrow />}>
             Pay
           </ActionButton>
           <ActionButton tone="blue" icon={<DownArrow />}>
             Request
           </ActionButton>
-          <ActionButton tone="purple" icon={<RightArrow />}>
-            Add Money
-          </ActionButton>
+          <form action={topUp} className="flex flex-1">
+            <ActionButton tone="purple" icon={<PlusIcon />} type="submit">
+              Add Money
+            </ActionButton>
+          </form>
         </div>
 
         {/* Bank Accounts section */}
@@ -247,10 +272,12 @@ function ActionButton({
   children,
   tone,
   icon,
+  type = "button",
 }: {
   children: React.ReactNode;
   tone: "orange" | "blue" | "purple";
   icon: React.ReactNode;
+  type?: "button" | "submit";
 }) {
   const colors =
     tone === "orange"
@@ -260,18 +287,18 @@ function ActionButton({
         : { bg: "#580566", border: "#a22fb6", dot: "#a22fb6" };
   return (
     <button
-      type="button"
-      className="flex flex-1 items-center justify-center gap-2 rounded-[16px] border-2 px-3 py-3 text-[13px] font-extrabold text-white active:opacity-80 transition-opacity"
+      type={type}
+      className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] border-2 text-[13px] font-extrabold leading-none text-white active:scale-[0.98] active:opacity-80 transition-all"
       style={{ backgroundColor: colors.bg, borderColor: colors.border }}
     >
       <span
         aria-hidden
-        className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-white"
+        className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-white"
         style={{ background: colors.dot }}
       >
         {icon}
       </span>
-      {children}
+      <span className="whitespace-nowrap">{children}</span>
     </button>
   );
 }
@@ -311,10 +338,10 @@ function DownArrow() {
   );
 }
 
-function RightArrow() {
+function PlusIcon() {
   return (
-    <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 7h8M7 3l4 4-4 4" />
+    <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+      <path d="M7 2v10M2 7h10" />
     </svg>
   );
 }
