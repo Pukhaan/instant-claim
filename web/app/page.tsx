@@ -186,11 +186,11 @@ export default async function HomePage() {
           <SectionLabel>Your Travel</SectionLabel>
           <div className="flex flex-col items-center gap-3 rounded-[16px] bg-[var(--finn-card)] px-3 py-4 text-center">
             <Image
-              src="/finn/finn-neutral.png"
+              src="/AI_Logo.png"
               alt="Finn"
-              width={46}
-              height={46}
-              className="h-[46px] w-[46px] object-contain"
+              width={56}
+              height={56}
+              className="h-14 w-14 object-contain"
               priority
             />
             <div>
