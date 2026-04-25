@@ -151,6 +151,14 @@ export default function ClaimWizard() {
   const [stage, setStage] = useState<Stage>({ kind: "intro" });
   const router = useRouter();
 
+  // Pre-warm the home page so tapping back from the Introduction screen is
+  // instant. The home page is `force-dynamic` (live bunq balance + recent
+  // transactions on every request); without prefetching it would cold-render
+  // for 1–2 s after each back-tap.
+  useEffect(() => {
+    router.prefetch("/");
+  }, [router]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
   const timerRef = useRef<number | null>(null);
