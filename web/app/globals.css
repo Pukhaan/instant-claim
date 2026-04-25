@@ -62,8 +62,8 @@
   /* Tailwind font utilities — `font-sans` resolves to the SF Pro Rounded
      system stack; `font-mono` to DM Mono (loaded in layout.tsx). */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display",
-    "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+    ui-rounded, "SF Pro Rounded", -apple-system-rounded, -apple-system,
+    BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
   --font-mono: var(--font-mono-snap), "SF Mono", ui-monospace, monospace;
 }
 
@@ -109,12 +109,14 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  /* SF Pro Rounded everywhere. On iOS/iPadOS/macOS Safari this resolves to
-     the actual San Francisco Rounded family; elsewhere the stack falls back
-     through Helvetica Neue to the OS system UI font. */
+  /* SF Pro Rounded everywhere.
+     `ui-rounded` is the CSS Fonts Module 4 generic that maps to the OS's
+     rounded UI font — on iOS / iPadOS / macOS Safari that's SF Pro Rounded.
+     `-apple-system` MUST sit after it; otherwise Safari resolves to plain
+     SF Pro before it ever sees the rounded request. */
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display",
-    "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+    ui-rounded, "SF Pro Rounded", -apple-system-rounded, -apple-system,
+    BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "ss01";
 }
@@ -157,12 +159,14 @@ body {
 
   background: var(--snap-bunq-ink);
   color: var(--snap-text);
-  /* SF Pro Rounded (iOS) → SF Pro (macOS) → system UI fallback. The Figma
-     uses SF Pro Rounded across the entire flow. Inter is the absolute last
-     resort for non-Apple devices. */
+  /* SF Pro Rounded across the whole claim flow.
+     `ui-rounded` is the CSS Fonts Module 4 generic that maps to the OS's
+     rounded UI font — on iOS / iPadOS / macOS Safari that's SF Pro Rounded.
+     The order matters: `-apple-system` MUST sit AFTER ui-rounded, otherwise
+     Safari resolves to the regular SF Pro family first. */
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Display",
-    "SF Pro Text", "Helvetica Neue", "Inter", system-ui, sans-serif;
+    ui-rounded, "SF Pro Rounded", -apple-system-rounded, -apple-system,
+    BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
