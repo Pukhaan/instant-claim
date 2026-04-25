@@ -218,8 +218,27 @@ export default async function HomePage() {
             {txs.slice(0, 3).map((t, i, arr) => {
               const amt = fmtMoney(t.amount ?? 0);
               const last = i === Math.min(arr.length, 3) - 1;
-              const initial = (t.counterparty || t.description || "?").trim().charAt(0).toUpperCase();
               const isOut = (t.amount ?? 0) < 0;
+
+              // Approved-claim payouts come back from bunq with Sugar Daddy
+              // as the literal counterparty (the only auto-accepting payer
+              // in sandbox), but the description carries the Claim ID. Show
+              // them as a Quvos payout in the UI.
+              const isPayout = (t.description ?? "").startsWith("Claim SC-");
+              const counterparty = isPayout
+                ? "Quvos Insurance Payout"
+                : (t.counterparty ?? t.description ?? "Payment");
+              const description = isPayout
+                ? (t.description ?? "")
+                : (t.description ?? "Online Payment");
+              const initial = isPayout
+                ? "Q"
+                : (t.counterparty || t.description || "?").trim().charAt(0).toUpperCase();
+              const amountColor = isPayout
+                ? "text-[var(--finn-success)]"
+                : "text-[var(--finn-orange)]";
+              const sign = isPayout ? "+" : isOut ? "-" : "";
+
               return (
                 <div
                   key={t.id}
@@ -228,21 +247,31 @@ export default async function HomePage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-[27px] bg-white">
-                      <span className="text-[19px] font-extrabold text-black">{initial}</span>
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-[27px] ${
+                        isPayout ? "bg-[var(--finn-success)]" : "bg-white"
+                      }`}
+                    >
+                      <span
+                        className={`text-[19px] font-extrabold ${
+                          isPayout ? "text-[var(--finn-bg)]" : "text-black"
+                        }`}
+                      >
+                        {initial}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-0.5 leading-tight">
                       <p className="text-[18px] font-medium text-[var(--finn-text)]">
-                        {t.counterparty ?? t.description ?? "Payment"}
+                        {counterparty}
                       </p>
                       <p className="text-[14px] font-medium text-[var(--finn-muted)]">
-                        {t.description ?? "Online Payment"}
+                        {description}
                       </p>
                     </div>
                   </div>
-                  <p className="tabular-nums text-[var(--finn-orange)]">
+                  <p className={`tabular-nums ${amountColor}`}>
                     <span className="text-[17px] font-extrabold">
-                      € {isOut ? "-" : ""}
+                      € {sign}
                       {amt.major},
                     </span>
                     <span className="text-[10.965px] font-extrabold">{amt.minor}</span>
