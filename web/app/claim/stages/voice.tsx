@@ -98,7 +98,7 @@ export default function VoiceStage({
 
       {/* ── Rainbow Finn ────────────────────────────────────────────────── */}
       <div className="mt-6 px-5">
-        <FinnAvatar size={80} mood="surprised" />
+        <FinnAvatar size={80} mood="happy" />
       </div>
 
       {/* ── Heading ─────────────────────────────────────────────────────── */}

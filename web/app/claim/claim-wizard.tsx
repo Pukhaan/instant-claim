@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Waveform from "../chat/waveform";
+import FinnAvatar from "../finn-avatar";
 import { submitClaim, type ClaimResponse, type Coverage } from "@/lib/claim";
 import { formatEUR } from "@/lib/format";
 import { createRecorder, transcribeBlob, type RecorderHandle } from "@/lib/voice";
@@ -848,63 +849,79 @@ function ConfirmScreen({
 // ─────────── Analyzing ───────────
 
 function AnalyzingScreen({ step }: { step: SubmitStep }) {
-  const currentIdx = STEP_SEQUENCE.indexOf(step);
+  void step;
   return (
-    <ScreenShell>
-      <div className="flex flex-col items-center text-center pt-12">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#08f] text-2xl font-extrabold text-[#05070a]">
-          F
-        </div>
-        <h1 className="mt-5 text-[28px] font-bold leading-tight tracking-[-0.7px] text-white">
-          Give me a few seconds.
-        </h1>
-        <p className="mt-2 max-w-[28ch] text-[13px] leading-relaxed text-[#8c99a6]">
-          Running a few checks in parallel — usually about{" "}
-          <span className="text-white">8 seconds</span>.
-        </p>
+    <div
+      className="snap relative flex min-h-[100dvh] flex-col bg-[#05070a] text-white"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      {/* Nav row */}
+      <div className="relative flex h-11 items-center px-3">
+        <button
+          type="button"
+          aria-label="Back"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-white opacity-50"
+          disabled
+        >
+          <ChevronLeftIcon />
+        </button>
+        <span className="ml-2 text-[17px] font-semibold leading-none text-white">
+          Finn is Working
+        </span>
+        <span className="ml-auto pr-2 text-[13px] font-normal leading-none text-[#8c99a6]">
+          5/6
+        </span>
       </div>
 
-      <ol className="mt-10 space-y-3 px-5">
-        {STEP_SEQUENCE.map((s, i) => {
-          const done = i < currentIdx;
-          const active = i === currentIdx;
-          const dim = !done && !active;
-          return (
-            <li
-              key={s}
-              className={`flex items-start gap-3 rounded-[14px] border px-3.5 py-3 ${
-                active
-                  ? "border-[#08f]/40 bg-[#08f]/[0.06]"
-                  : "border-white/[0.08] bg-[#12151a]"
-              } ${dim ? "opacity-50" : ""}`}
-            >
-              <span
-                className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                  done
-                    ? "bg-[#08f]"
-                    : active
-                      ? "bg-[#08f] animate-pulse"
-                      : "bg-[#8c99a6]"
-                }`}
-              />
-              <div className="min-w-0">
-                <p className="text-[15px] font-medium leading-tight text-white">
-                  {STEP_LABELS[s]}
-                </p>
-                <p className="mt-0.5 text-[12px] leading-snug text-[#8c99a6]">
-                  {STEP_SUBLABELS[s]}
-                </p>
-              </div>
-              {done && (
-                <span className="ml-auto text-[#08f]">
-                  <CheckIcon />
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </ScreenShell>
+      {/* Progress bar — segments 1-5 filled */}
+      <div className="mt-3 flex items-center gap-1 px-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <span
+            key={i}
+            className="h-1 flex-1 rounded-full"
+            style={{ background: i < 5 ? "#08f" : "rgba(255,255,255,0.12)" }}
+          />
+        ))}
+      </div>
+
+      {/* Big Finn mascot — chart-rich intro variant, scales with viewport */}
+      <div className="flex flex-1 items-center justify-center px-6">
+        <FinnAvatar size={280} mood="intro" />
+      </div>
+
+      {/* Heading + subtitle */}
+      <div className="px-5 pb-10 text-center">
+        <h1 className="text-[34px] font-extrabold leading-[1.1] tracking-[-1px] text-white">
+          On it! Give me a few seconds..
+        </h1>
+        <p className="mt-3 text-[14px] leading-[20px] text-[#8c99a6]">
+          I&apos;m crunching all the details together, analyzing the numbers,
+          running six checks in parallel — reading your photo, listening to
+          your note, matching your purchase, and comparing to your policy.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M13 4l-6 6 6 6" />
+    </svg>
   );
 }
 
