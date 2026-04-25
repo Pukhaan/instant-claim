@@ -40,7 +40,9 @@ _bucket: str | None = None
 _bucket_lock = threading.Lock()
 
 AUDIO_PREFIX = "audio/"
-MAX_WAIT_S = 45.0
+# Voice notes are uncapped on the frontend — bump the batch-fallback timeout
+# so a multi-minute clip can still complete if streaming hits a hiccup.
+MAX_WAIT_S = 180.0
 # Aggressive polling so end-to-end latency on a 5-10s clip is closer to 4-6s.
 # AWS Transcribe doesn't charge per get_transcription_job poll.
 POLL_INTERVAL_INITIAL_S = 0.25
@@ -207,7 +209,7 @@ def _ffmpeg_to_pcm16(audio_bytes: bytes, source_format: str, sample_rate: int) -
     return proc.stdout
 
 
-def _run_in_thread_loop(coro: Any, timeout_s: float = 30.0) -> Any:
+def _run_in_thread_loop(coro: Any, timeout_s: float = 180.0) -> Any:
     """Run an async coroutine on a fresh event loop in a worker thread.
 
     Required because FastAPI's request handler already owns an event loop, so

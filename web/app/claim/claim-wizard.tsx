@@ -38,7 +38,6 @@ import {
   type SubmitStep,
 } from "./decision";
 
-const MAX_RECORD_S = 20;
 const TOTAL_STEPS = 6; // matches Figma "1/6 … 6/6" header indicator
 
 type Category = {
@@ -254,13 +253,11 @@ export default function ClaimWizard() {
         elapsed: 0,
         stream,
       });
+      // No upper bound on recording length — user stops whenever they're done.
+      // Transcribe Streaming + Bedrock comfortably handle minutes of audio.
       timerRef.current = window.setInterval(() => {
         const elapsed = (Date.now() - startedAtRef.current) / 1000;
-        if (elapsed >= MAX_RECORD_S) {
-          stopVoice();
-        } else {
-          setStage((s) => (s.kind === "voiceRecording" ? { ...s, elapsed } : s));
-        }
+        setStage((s) => (s.kind === "voiceRecording" ? { ...s, elapsed } : s));
       }, 100) as unknown as number;
     } catch (err) {
       setStage({
@@ -620,7 +617,7 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
       <ul className="mt-5 space-y-3">
         {[
           { n: 1, t: "Snap a photo", s: "Of the damaged item, delay board, or receipt" },
-          { n: 2, t: "Tell me what happened", s: "A 20-second voice note — when, where, how" },
+          { n: 2, t: "Tell me what happened", s: "A short voice note — when, where, how, take your time" },
           { n: 3, t: "I do the rest", s: "Check your policy, match the purchase, pay out" },
         ].map((row) => (
           <li key={row.n} className="flex items-center gap-2">
@@ -834,7 +831,7 @@ function ReviewScreen({
       </div>
 
       <InfoCard className="mt-3">
-        Next up: a ~20-second voice note. Tell me{" "}
+        Next up: a short voice note — talk as long as you need. Tell me{" "}
         <span className="font-bold text-[var(--finn-text)]">when</span>,{" "}
         <span className="font-bold text-[var(--finn-text)]">where</span>, and{" "}
         <span className="font-bold text-[var(--finn-text)]">how</span> it happened. Just speak
