@@ -15,8 +15,8 @@ export const STEP_LABELS: Record<SubmitStep, string> = {
   reading_photo: "Reading your photo",
   extracting_facts: "Listening to your note",
   matching_purchase: "Matching your purchase",
-  checking_policy: "Sending data to Quovo",
-  sanity_checking: "Confirming with Quovo policy",
+  checking_policy: "Sending data to Quvos",
+  sanity_checking: "Confirming with Quvos policy",
   deciding: "Calculating instant payout",
 };
 
