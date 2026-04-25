@@ -14,11 +14,11 @@ Finn lives natively inside the bunq app and replaces the entire third-party clai
 
 ## The problem we're solving
 
-bunq's premium subscription tiers — **Easy Travel, Easy Money, and Elite** — bundle real insurance products that are a primary reason users upgrade and stay subscribed. The insurance is underwritten by **Quvos**, a third-party partner. This split is silently driving churn in bunq's most profitable subscription line.
+bunq's elite subscription tier bundle real insurance products that are one of the primary reasons users upgrade and stay subscribed to it. However, the insurance is underwritten by **Quvos**, which is a third-party partner. This split is what drives churn in bunq's most profitable subscription line.
 
-The moment a user actually needs to claim, they are pushed out of the bunq app entirely, onto a third-party portal with a fourteen-field form, asked to re-enter data bunq already holds, and made to wait 7–14 days for a decision. Industry data puts claim-handling cost at **€30–80 per ticket** and utilization on bundled insurance **below 15%** — meaning the vast majority of premium subscribers pay every month for a benefit they will never use.
+The moment a user actually needs to claim, they are pushed out of the bunq app and ecosystem entirely, onto a third-party portal with a fourteen-field form, asked to re-enter data bunq already holds. Plus they are made to wait 7–14 days for a decision. Industry data puts claim-handling cost at **€30–80 per ticket** and utilization on bundled insurance **below 15%** — meaning the vast majority of elite subscribers pay every month for a benefit they don't get the benefit of, because of how badly designed the system is.
 
-The downstream effect is exactly what bunq's retention numbers reflect: **collapsing perceived value of the premium plan, falling satisfaction, falling NPS, and silent churn from the highest-paying tier**. At the exact moment a user most needs their bank, bunq is nowhere to be found — they are on someone else's website.
+The downstream effect is exactly what bunq's retention numbers reflect: **collapsing perceived value of the premium plan, falling satisfaction, falling NPS, and increased churn from the highest-paying tier**. At the exact moment a user most needs their bank, bunq is nowhere to be found. The users are sent on someone else's website.
 
 ## Return on investment — concentrated on retention
 
