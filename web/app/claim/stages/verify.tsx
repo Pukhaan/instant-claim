@@ -61,8 +61,8 @@ export default function VerifyStage({
 
       {/* Step pills — step 2 active */}
       <div className="flex items-center justify-center gap-2">
-        <span className="h-[6px] w-[6px] rounded-[3px] bg-[#a8db45]" />
-        <span className="h-[6px] w-6 rounded-[3px] bg-[#a8db45]" />
+        <span className="h-[6px] w-[6px] rounded-[3px] bg-[#08f]" />
+        <span className="h-[6px] w-6 rounded-[3px] bg-[#08f]" />
         <span className="h-[6px] w-[6px] rounded-[3px] bg-white/[0.15]" />
         <span className="h-[6px] w-[6px] rounded-[3px] bg-white/[0.15]" />
         <span className="h-[6px] w-[6px] rounded-[3px] bg-white/[0.15]" />
@@ -70,7 +70,7 @@ export default function VerifyStage({
 
       {/* Finn speech bubble */}
       <div className="mt-[26px] flex items-start gap-3 px-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#a8db45]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#08f]">
           <span
             className="text-[18px] leading-none text-[#05070a]"
             style={{ fontWeight: 900 }}
@@ -82,7 +82,7 @@ export default function VerifyStage({
           className="flex-1 overflow-hidden bg-[#12151a] px-4 py-3"
           style={{ borderRadius: "4px 18px 18px 18px" }}
         >
-          <p className="text-[11px] font-medium leading-none text-[#a8db45]">
+          <p className="text-[11px] font-medium leading-none text-[#08f]">
             Quick checks
           </p>
           <p className="mt-1.5 text-[14px] font-semibold leading-[19px] text-white">
@@ -118,7 +118,7 @@ export default function VerifyStage({
             onChange={(e) =>
               onImeiChange(e.target.value.replace(/\D/g, "").slice(0, 15))
             }
-            className="block w-full rounded-[14px] bg-[#12151a] px-4 py-3.5 text-[16px] font-medium text-white placeholder:text-[#6b7480] focus:outline-none focus:ring-2 focus:ring-[#a8db45]/60"
+            className="block w-full rounded-[14px] bg-[#12151a] px-4 py-3.5 text-[16px] font-medium text-white placeholder:text-[#6b7480] focus:outline-none focus:ring-2 focus:ring-[#08f]/60"
             style={{ letterSpacing: "0.02em" }}
           />
           <p className="mt-1.5 text-[11px] text-[#8c99a6]">
@@ -140,9 +140,9 @@ export default function VerifyStage({
             aria-hidden
             className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors"
             style={{
-              background: fraudConfirmed ? "#a8db45" : "transparent",
+              background: fraudConfirmed ? "#08f" : "transparent",
               borderColor: fraudConfirmed
-                ? "#a8db45"
+                ? "#08f"
                 : "rgba(255,255,255,0.3)",
             }}
           >
@@ -168,7 +168,7 @@ export default function VerifyStage({
           type="button"
           onClick={onContinue}
           disabled={!canContinue}
-          className="flex h-14 w-full items-center justify-center rounded-[28px] bg-[#a8db45] text-[16px] font-bold text-[#05070a] transition-opacity active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-14 w-full items-center justify-center rounded-[28px] bg-[#08f] text-[16px] font-bold text-[#05070a] transition-opacity active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Continue · Snap the damage
         </button>

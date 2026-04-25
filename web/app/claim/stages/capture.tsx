@@ -76,12 +76,12 @@ export default function CaptureStage({
       {/* Tip pill + optional category label */}
       <div className="relative z-10 mb-3 flex flex-col items-center gap-1.5">
         {categoryLabel ? (
-          <span className="rounded-full bg-black/45 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#a8db45]">
+          <span className="rounded-full bg-black/45 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#08f]">
             {categoryLabel}
           </span>
         ) : null}
         <div className="flex items-center gap-2 rounded-[18px] bg-black/55 px-4 py-2">
-          <span className="h-2 w-2 rounded-full bg-[#a8db45]" aria-hidden />
+          <span className="h-2 w-2 rounded-full bg-[#08f]" aria-hidden />
           <span className="text-[12px] font-semibold text-white">
             Frame the damage clearly
           </span>
@@ -96,7 +96,7 @@ export default function CaptureStage({
           <ModeLabel active={false} label="PHOTO" />
           <div className="flex flex-col items-center gap-1">
             <ModeLabel active label="CLAIM" />
-            <span className="h-1 w-1 rounded-full bg-[#a8db45]" aria-hidden />
+            <span className="h-1 w-1 rounded-full bg-[#08f]" aria-hidden />
           </div>
         </div>
 
@@ -116,7 +116,7 @@ export default function CaptureStage({
             aria-label="Take photo"
             className="flex h-[82px] w-[82px] items-center justify-center rounded-full bg-white active:opacity-90"
           >
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#a8db45]">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#08f]">
               <span className="text-[11px] font-extrabold tracking-[0.06em] text-[#05070a]">
                 SNAP
               </span>
@@ -197,7 +197,7 @@ function ModeLabel({ active, label }: { active: boolean; label: string }) {
     <span
       className={`text-[11px] tracking-[0.08em] ${
         active
-          ? "font-extrabold text-[#a8db45]"
+          ? "font-extrabold text-[#08f]"
           : "font-medium text-[#8c99a6]"
       }`}
     >
@@ -220,7 +220,7 @@ function CloseIcon() {
 
 function FlashIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="#a8db45" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="#08f" aria-hidden>
       <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
     </svg>
   );

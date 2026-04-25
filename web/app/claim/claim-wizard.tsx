@@ -13,7 +13,7 @@
 //   result         → approved / escalated / rejected verdict
 //   error          → recoverable error with reset
 //
-// Visual language matches BunqHome: bg #05070a, lime #a8db45 accent,
+// Visual language matches BunqHome: bg #05070a, lime #08f accent,
 // SF Pro Rounded via the .snap class. Voice/photo capture wires through the
 // existing lib helpers so backend integration is unchanged.
 
@@ -38,8 +38,12 @@ import CategoryStage, {
   type CategoryId,
 } from "./stages/category";
 import CaptureStage from "./stages/capture";
+import ConfirmStage from "./stages/confirm";
 import IntroductionStage from "./stages/introduction";
+import ResultStage from "./stages/result";
+import ReviewStage from "./stages/review";
 import VerifyStage from "./stages/verify";
+import VoiceStage from "./stages/voice";
 
 const MAX_RECORD_S = 20;
 
@@ -423,11 +427,10 @@ export default function ClaimWizard() {
           )}
 
           {stage.kind === "review" && (
-            <ReviewScreen
-              category={stage.category}
+            <ReviewStage
               previewUrl={stage.preview}
-              file={stage.file}
               onRetake={retakePhoto}
+              onAddAnother={retakePhoto}
               onContinue={continueToVoice}
               onBack={() =>
                 setStage({ kind: "category", selectedId: stage.category.id })
@@ -436,8 +439,11 @@ export default function ClaimWizard() {
           )}
 
           {stage.kind === "voice" && (
-            <VoiceScreen
+            <VoiceStage
               state="idle"
+              elapsedSeconds={0}
+              maxSeconds={MAX_RECORD_S}
+              stream={null}
               onStart={startVoice}
               onStop={() => {}}
               onCancel={() => {}}
@@ -449,40 +455,41 @@ export default function ClaimWizard() {
                   preview: stage.preview,
                 })
               }
-              elapsed={0}
-              stream={null}
             />
           )}
 
           {stage.kind === "voiceRecording" && (
-            <VoiceScreen
+            <VoiceStage
               state="recording"
+              elapsedSeconds={stage.elapsed}
+              maxSeconds={MAX_RECORD_S}
+              stream={stage.stream}
               onStart={() => {}}
               onStop={stopVoice}
               onCancel={cancelVoice}
               onBack={cancelVoice}
-              elapsed={stage.elapsed}
-              stream={stage.stream}
             />
           )}
 
           {stage.kind === "voiceTranscribing" && (
-            <VoiceScreen
+            <VoiceStage
               state="transcribing"
+              elapsedSeconds={stage.duration}
+              maxSeconds={MAX_RECORD_S}
+              stream={null}
               onStart={() => {}}
               onStop={() => {}}
               onCancel={() => {}}
               onBack={() => {}}
-              elapsed={stage.duration}
-              stream={null}
             />
           )}
 
           {stage.kind === "confirm" && (
-            <ConfirmScreen
-              transcript={stage.transcript}
+            <ConfirmStage
+              photoPreviewUrl={stage.preview}
+              facts={[]}
               onConfirm={submit}
-              onRerecord={rerecordVoice}
+              onEdit={() => {}}
               onBack={rerecordVoice}
             />
           )}
@@ -490,7 +497,23 @@ export default function ClaimWizard() {
           {stage.kind === "analyzing" && <AnalyzingScreen step={stage.step} />}
 
           {stage.kind === "result" && (
-            <ResultScreen result={stage.result} onAgain={reset} />
+            <ResultStage
+              amount={
+                stage.result.decision.payout_eur ||
+                stage.result.decision.claim_amount_eur ||
+                600
+              }
+              status={
+                stage.result.decision.decision === "approve"
+                  ? "Approved"
+                  : stage.result.decision.decision === "escalate"
+                    ? "Under review"
+                    : "Declined"
+              }
+              type={stage.result.decision.damage_type ?? "Device damage"}
+              action="Repair scheduled"
+              onDone={reset}
+            />
           )}
 
           {stage.kind === "error" && (
@@ -519,7 +542,7 @@ export default function ClaimWizard() {
 // ════════════════════════════════════════════════════════════════════════════
 // Stages still rendered inline below (review · voice · confirm · analyzing ·
 // result · error). All share the bunq-home palette: bg #05070a, surface
-// #12151a, lime #a8db45, secondary text #8c99a6, SF Pro Rounded via .snap.
+// #12151a, lime #08f, secondary text #8c99a6, SF Pro Rounded via .snap.
 // ════════════════════════════════════════════════════════════════════════════
 
 function ScreenShell({ children }: { children: React.ReactNode }) {
@@ -576,7 +599,7 @@ function PrimaryCTA({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex h-14 w-full items-center justify-center rounded-[28px] bg-[#a8db45] text-[16px] font-bold text-[#05070a] transition-opacity active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex h-14 w-full items-center justify-center rounded-[28px] bg-[#08f] text-[16px] font-bold text-[#05070a] transition-opacity active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {children}
     </button>
@@ -735,7 +758,7 @@ function VoiceScreen({
           <Waveform
             stream={stream}
             barClassName={
-              state === "recording" ? "bg-[#a8db45]" : "bg-[#8c99a6]/60"
+              state === "recording" ? "bg-[#08f]" : "bg-[#8c99a6]/60"
             }
             bars={32}
           />
@@ -747,7 +770,7 @@ function VoiceScreen({
               type="button"
               onClick={onStart}
               aria-label="Start recording"
-              className="flex h-20 w-20 items-center justify-center rounded-full bg-[#a8db45] active:scale-95 transition-transform"
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-[#08f] active:scale-95 transition-transform"
             >
               <MicGlyph color="#05070a" />
             </button>
@@ -757,15 +780,15 @@ function VoiceScreen({
               type="button"
               onClick={onStop}
               aria-label="Stop recording"
-              className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[#a8db45] active:scale-95 transition-transform"
+              className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[#08f] active:scale-95 transition-transform"
             >
-              <span className="absolute inset-0 animate-ping rounded-full bg-[#a8db45]/30" />
+              <span className="absolute inset-0 animate-ping rounded-full bg-[#08f]/30" />
               <span className="relative h-7 w-7 rounded-md bg-[#05070a]" />
             </button>
           )}
           {state === "transcribing" && (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#a8db45]/30">
-              <Spinner color="#a8db45" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#08f]/30">
+              <Spinner color="#08f" />
             </div>
           )}
         </div>
@@ -804,7 +827,7 @@ function ConfirmScreen({
       <div className="mt-6 px-5">
         <div className="rounded-[20px] border border-white/[0.08] bg-[#12151a] p-4">
           <div className="flex items-start gap-2.5">
-            <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#a8db45] text-[12px] font-extrabold text-[#05070a]">
+            <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#08f] text-[12px] font-extrabold text-[#05070a]">
               F
             </div>
             <p className="text-[15px] leading-relaxed text-white">
@@ -829,7 +852,7 @@ function AnalyzingScreen({ step }: { step: SubmitStep }) {
   return (
     <ScreenShell>
       <div className="flex flex-col items-center text-center pt-12">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#a8db45] text-2xl font-extrabold text-[#05070a]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#08f] text-2xl font-extrabold text-[#05070a]">
           F
         </div>
         <h1 className="mt-5 text-[28px] font-bold leading-tight tracking-[-0.7px] text-white">
@@ -851,16 +874,16 @@ function AnalyzingScreen({ step }: { step: SubmitStep }) {
               key={s}
               className={`flex items-start gap-3 rounded-[14px] border px-3.5 py-3 ${
                 active
-                  ? "border-[#a8db45]/40 bg-[#a8db45]/[0.06]"
+                  ? "border-[#08f]/40 bg-[#08f]/[0.06]"
                   : "border-white/[0.08] bg-[#12151a]"
               } ${dim ? "opacity-50" : ""}`}
             >
               <span
                 className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
                   done
-                    ? "bg-[#a8db45]"
+                    ? "bg-[#08f]"
                     : active
-                      ? "bg-[#a8db45] animate-pulse"
+                      ? "bg-[#08f] animate-pulse"
                       : "bg-[#8c99a6]"
                 }`}
               />
@@ -873,7 +896,7 @@ function AnalyzingScreen({ step }: { step: SubmitStep }) {
                 </p>
               </div>
               {done && (
-                <span className="ml-auto text-[#a8db45]">
+                <span className="ml-auto text-[#08f]">
                   <CheckIcon />
                 </span>
               )}
@@ -986,7 +1009,7 @@ function ResultPill({
   const map = {
     approved: {
       label: "Approved · paid",
-      color: "#a8db45",
+      color: "#08f",
       bg: "rgba(168,219,69,0.08)",
       border: "rgba(168,219,69,0.32)",
     },
@@ -1068,7 +1091,7 @@ function FinnInline({
   return (
     <div className={`px-5 ${className}`}>
       <div className="flex items-start gap-2.5">
-        <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#a8db45] text-[12px] font-extrabold text-[#05070a]">
+        <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#08f] text-[12px] font-extrabold text-[#05070a]">
           F
         </div>
         <div
