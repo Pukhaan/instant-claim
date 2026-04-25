@@ -4,7 +4,7 @@
 Finn lives natively inside the bunq app and replaces the entire third-party claim flow with a 60-second multimodal conversation: a photo, a voice note, and an instant payout to the user's main account.
 
 > 🟢 Live demo: **<https://teller-eight.vercel.app>**
-> 📦 Code:      **<https://github.com/Pukhaan/instant-claim>** (private)
+> 📦 Code:      **<https://github.com/Pukhaan/instant-claim>** (public)
 
 [![Built for bunq AI Agents Hackathon](https://img.shields.io/badge/built%20for-bunq%20AI%20Agents%20Hackathon-orange)](https://doc.bunq.com)
 [![AWS only](https://img.shields.io/badge/inference-AWS%20Bedrock-orange)](https://aws.amazon.com/bedrock/)
