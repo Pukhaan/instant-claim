@@ -185,6 +185,37 @@ def request_sandbox_money(amount_eur: float = 500.0) -> dict[str, Any]:
     return {"requested_eur": amount_eur, "from": "sugardaddy@bunq.com"}
 
 
+def request_payout(
+    amount_eur: float,
+    description: str,
+    sender_name: str = "Quvos Insurance Payout",
+) -> dict[str, Any]:
+    """Approved-claim payout. Routes through Sugar Daddy under the hood so it
+    auto-accepts in sandbox, but overrides the displayed counterparty so the
+    resulting transaction reads as `Quvos Insurance Payout · Claim XYZ`
+    on the user's home screen."""
+    client = get_client()
+    account_id = client.get_primary_account_id()
+    client.post(
+        f"user/{client.user_id}/monetary-account/{account_id}/request-inquiry",
+        {
+            "amount_inquired": {"value": f"{amount_eur:.2f}", "currency": "EUR"},
+            "counterparty_alias": {
+                "type": "EMAIL",
+                "value": "sugardaddy@bunq.com",
+                "name": sender_name,
+            },
+            "description": description,
+            "allow_bunqme": False,
+        },
+    )
+    return {
+        "payout_eur": amount_eur,
+        "sender": sender_name,
+        "description": description,
+    }
+
+
 def register_webhook(callback_url: str) -> dict[str, Any]:
     """Registers a notification-filter URL for real-time payment/mutation events."""
     client = get_client()

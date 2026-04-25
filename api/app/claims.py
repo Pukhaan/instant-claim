@@ -234,15 +234,27 @@ def process_claim(
     decision.setdefault("deductible_eur", 0)
     decision.setdefault("policy_clause", policy.split(".")[0])
 
-    # Step 5: if approved and payout > 0, execute via Sugar Daddy (sandbox-only).
-    # In production this would be a real transfer from the insurer's account.
+    # Step 5: if approved and payout > 0, queue the real payout. In sandbox we
+    # route through Sugar Daddy under the hood (only auto-accepting payer) but
+    # display it as "Quvos Insurance Payout · Claim XYZ · iPhone screen" so the
+    # user sees it correctly on the home transaction list. In production this
+    # is a direct transfer from the insurer's account.
     payout: dict[str, Any] | None = None
     if decision.get("decision") == "approve":
         amount = float(decision.get("payout_eur") or 0)
         if amount > 0:
+            claim_id = f"SC-{__import__('time').strftime('%Y%m')}-{__import__('uuid').uuid4().hex[:5].upper()}"
+            damage_label = (
+                str(decision.get("damage_type") or "claim").strip().replace("_", " ").title()
+            )
+            payout_description = f"Claim {claim_id} \u00b7 {damage_label}"
             try:
-                payout = bunq_service.request_sandbox_money(amount)
+                payout = bunq_service.request_payout(
+                    amount_eur=amount,
+                    description=payout_description,
+                )
                 payout["amount_eur"] = amount
+                payout["claim_id"] = claim_id
             except Exception as exc:
                 payout = {"error": f"{type(exc).__name__}: {exc}"}
 

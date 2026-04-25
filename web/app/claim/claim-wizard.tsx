@@ -22,7 +22,6 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Waveform from "../chat/waveform";
@@ -1202,7 +1201,13 @@ function ResultScreen({
       )}
 
       <div className="mt-3 rounded-[16px] bg-[var(--finn-card)] p-2">
-        <MetaRow k="Claim ID" v={`SC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 99999)).padStart(5, "0")}`} />
+        <MetaRow
+          k="Claim ID"
+          v={
+            result.payout?.claim_id ??
+            `SC-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 99999)).padStart(5, "0")}`
+          }
+        />
         <MetaRow
           k="Damage"
           v={`${decision.damage_type ?? "—"} · ${decision.severity ?? "—"}`}
@@ -1219,8 +1224,15 @@ function ResultScreen({
       </div>
 
       <div className="mt-auto pt-6">
-        <Link
-          href="/"
+        <button
+          type="button"
+          onClick={() => {
+            // Hard navigation so the home page re-renders against fresh
+            // bunq data — the new "Quvos Insurance Payout" transaction
+            // bunq queues for approved claims takes ~1-2 s to settle,
+            // by which time the user is already on the home page.
+            window.location.assign("/");
+          }}
           className="flex h-[52px] w-full items-center justify-center rounded-[10px] text-[18px] font-extrabold leading-[30px]"
           style={{
             backgroundColor: isApproved ? "var(--finn-success)" : "var(--finn-blue)",
@@ -1228,7 +1240,7 @@ function ResultScreen({
           }}
         >
           Back to Homepage
-        </Link>
+        </button>
       </div>
     </div>
   );

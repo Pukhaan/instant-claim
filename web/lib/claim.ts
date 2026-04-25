@@ -20,7 +20,13 @@ export type ClaimResponse = {
     duration_s: number | null;
   };
   policy: { coverage: string; clause: string };
-  payout: { amount_eur?: number; requested_eur?: number; error?: string } | null;
+  payout: {
+    amount_eur?: number;
+    claim_id?: string;
+    sender?: string;
+    description?: string;
+    error?: string;
+  } | null;
   context: { transactions_considered: number };
 };
 
