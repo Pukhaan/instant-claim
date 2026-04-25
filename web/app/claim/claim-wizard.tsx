@@ -509,54 +509,56 @@ function ScreenSwitch({
 
 function IntroScreen({ onStart }: { onStart: () => void }) {
   return (
-    <div className="flex flex-1 flex-col px-6 pb-8 pt-10">
-      <div className="flex items-center justify-between">
-        <Link
-          href="/"
-          aria-label="Close"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--snap-border)] text-[var(--snap-text-soft)]"
-        >
-          <CloseIcon />
-        </Link>
-        <span className="snap-mono text-[10px] uppercase tracking-[0.14em] text-[var(--snap-text-muted)]">
-          Claims · Finn
-        </span>
-        <span className="w-9" />
+    <div className="flex flex-1 flex-col px-4 pb-8 pt-3">
+      {/* iOS-style nav bar — close button on the right (sheet pattern) */}
+      <NavBar
+        right={
+          <Link
+            href="/"
+            aria-label="Close"
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[var(--ios-fill-3)] text-[var(--ios-label-2)] active:opacity-60"
+          >
+            <CloseIcon />
+          </Link>
+        }
+      />
+
+      {/* Large title pattern (Apple HIG: 34pt bold, left-aligned, generous top padding) */}
+      <div className="px-1 pt-2">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--bunq-orange)] text-[20px] font-bold text-white">
+          F
+        </div>
+        <h1 className="ios-large-title mt-5 max-w-[16ch] text-balance">
+          Hi, I&apos;m Finn.
+        </h1>
+        <p className="ios-body mt-2 text-[var(--ios-label-2)]">
+          Three quick steps, about a minute. Most claims get paid the moment we&apos;re done.
+        </p>
       </div>
 
-      <div className="mt-12 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--snap-lime)] text-2xl font-extrabold text-[var(--snap-ink)]">
-        F
-      </div>
-
-      <h1 className="mt-5 max-w-[16ch] text-balance font-display text-[44px] font-semibold leading-[1.05] tracking-tight">
-        Hi, I&apos;m Finn.
-        <br />
-        Let&apos;s sort this out.
-      </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-[var(--snap-text-soft)]">
-        It&apos;ll take you through three quick steps. Should take about a minute, and most claims
-        get paid the moment we&apos;re done.
-      </p>
-
-      <ol className="mt-8 space-y-3.5">
+      {/* iOS inset grouped list — three steps as rows with separators between */}
+      <ul className="mt-8 overflow-hidden rounded-[14px] bg-[var(--ios-bg-2)]">
         {[
-          ["1", "Snap a photo", "Of the damaged item, delay board, or receipt"],
-          ["2", "Tell me what happened", "A 20-second voice note — when, where, how"],
-          ["3", "I do the rest", "Check your policy, match the purchase, pay if approved"],
-        ].map(([n, t, sub]) => (
-          <li key={n} className="flex items-start gap-3.5">
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--snap-lime-faint)] snap-mono text-[12px] font-medium text-[var(--snap-lime)]">
+          ["1", "Snap a photo", "The damage, the delay board, or a receipt"],
+          ["2", "Tell me what happened", "A short voice note — when, where, how"],
+          ["3", "I do the rest", "Check your cover, match the purchase, pay"],
+        ].map(([n, t, sub], i) => (
+          <li
+            key={n}
+            className={`flex items-center gap-3.5 px-4 py-3.5 ${i > 0 ? "border-t border-[var(--ios-separator)]" : ""}`}
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--bunq-orange-tint)] text-[13px] font-semibold text-[var(--bunq-orange)]">
               {n}
             </span>
             <div className="min-w-0">
-              <p className="text-[15px] font-medium leading-tight">{t}</p>
-              <p className="mt-0.5 text-[13px] leading-snug text-[var(--snap-text-soft)]">{sub}</p>
+              <p className="ios-headline">{t}</p>
+              <p className="ios-footnote mt-0.5 text-[var(--ios-label-2)]">{sub}</p>
             </div>
           </li>
         ))}
-      </ol>
+      </ul>
 
-      <div className="mt-auto pt-10">
+      <div className="mt-auto pt-8">
         <PrimaryCTA onClick={onStart}>Start a claim</PrimaryCTA>
       </div>
     </div>
@@ -575,34 +577,45 @@ function CategoryScreen({
   onBack: () => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col px-6 pb-8 pt-6">
-      <StepHeader step={1} total={3} title="What happened?" onBack={onBack} />
-      <p className="mt-3 text-[15px] leading-relaxed text-[var(--snap-text-soft)]">
-        Pick the closest match — I use this to frame the right questions and check the right
-        cover.
-      </p>
+    <div className="flex flex-1 flex-col px-4 pb-8 pt-3">
+      <NavBar
+        left={<BackButton onClick={onBack} />}
+        title="New claim"
+      />
 
-      <div className="mt-7 space-y-2.5">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onPick(c)}
-            className="group flex w-full items-center gap-4 rounded-2xl border border-[var(--snap-border)] bg-[var(--snap-surface)] px-4 py-4 text-left transition-colors active:bg-[var(--snap-surface-2)]"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--snap-lime-faint)] text-[var(--snap-lime)]">
-              <span className="block h-5 w-5">{c.icon}</span>
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[15px] font-medium leading-tight">{c.label}</span>
-              <span className="mt-0.5 block text-[12.5px] leading-snug text-[var(--snap-text-soft)]">
-                {c.sub}
-              </span>
-            </span>
-            <ChevronRight />
-          </button>
-        ))}
+      <div className="px-1 pt-3">
+        <StepDots step={1} total={3} />
+        <h1 className="ios-large-title mt-3">What happened?</h1>
+        <p className="ios-body mt-2 text-[var(--ios-label-2)]">
+          Pick the closest match. I use this to ask the right questions and check the right cover.
+        </p>
       </div>
+
+      {/* iOS inset grouped list — single rounded card, separators between rows */}
+      <ul className="mt-7 overflow-hidden rounded-[14px] bg-[var(--ios-bg-2)]">
+        {CATEGORIES.map((c, i) => (
+          <li key={c.id}>
+            <button
+              type="button"
+              onClick={() => onPick(c)}
+              className={`flex w-full items-center gap-3.5 px-4 py-3.5 text-left active:bg-[var(--ios-bg-3)] ${
+                i > 0 ? "border-t border-[var(--ios-separator)]" : ""
+              }`}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[var(--bunq-orange-tint)] text-[var(--bunq-orange)]">
+                <span className="block h-5 w-5">{c.icon}</span>
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="ios-callout block font-medium">{c.label}</span>
+                <span className="ios-footnote mt-0.5 block text-[var(--ios-label-2)]">
+                  {c.sub}
+                </span>
+              </span>
+              <ChevronRight />
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -649,7 +662,7 @@ function CaptureScreen({
         >
           <ChevronLeft />
         </button>
-        <span className="rounded-full bg-[var(--snap-lime)]/15 px-3 py-1 snap-mono text-[10px] uppercase tracking-[0.12em] text-[var(--snap-lime)] backdrop-blur">
+        <span className="rounded-full bg-[var(--bunq-orange)]/15 px-3 py-1 snap-rounded-mono text-[10px] uppercase tracking-[0.12em] text-[var(--bunq-orange)] backdrop-blur">
           Step 2 of 3 · Snap the {category.id === "device" ? "damage" : "evidence"}
         </span>
         <span className="w-9" />
@@ -657,7 +670,7 @@ function CaptureScreen({
 
       <div className="relative mx-4 mt-4 rounded-2xl border border-white/10 bg-black/65 px-3 py-2.5 backdrop-blur">
         <div className="flex items-start gap-2.5">
-          <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--snap-lime)] text-[10px] font-extrabold text-[var(--snap-ink)]">
+          <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--bunq-orange)] text-[10px] font-extrabold text-[var(--ios-bg)]">
             F
           </div>
           <p className="text-[12px] leading-snug text-white">
@@ -674,7 +687,7 @@ function CaptureScreen({
           <Bracket pos="bl" />
           <Bracket pos="br" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="snap-mono text-[10px] uppercase tracking-wider text-white/45">
+            <span className="snap-rounded-mono text-[10px] uppercase tracking-wider text-white/45">
               [ {category.id === "device" ? "damaged item" : "evidence"} in frame ]
             </span>
           </div>
@@ -695,7 +708,7 @@ function CaptureScreen({
           aria-label="Take photo"
           className="flex h-[78px] w-[78px] items-center justify-center rounded-full border-[3px] border-white bg-white/10 active:scale-95"
         >
-          <span className="h-[60px] w-[60px] rounded-full bg-[var(--snap-lime)]" />
+          <span className="h-[60px] w-[60px] rounded-full bg-[var(--bunq-orange)]" />
         </button>
         <span className="w-12" />
       </div>
@@ -713,7 +726,7 @@ function Bracket({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
   return (
     <div
       aria-hidden
-      className={`absolute h-7 w-7 border-[var(--snap-lime)] ${map[pos]}`}
+      className={`absolute h-7 w-7 border-[var(--bunq-orange)] ${map[pos]}`}
     />
   );
 }
@@ -741,15 +754,15 @@ function ReviewScreen({
     <div className="flex flex-1 flex-col px-6 pb-8 pt-6">
       <StepHeader step={2} total={3} title="Review · photo" onBack={onBack} />
 
-      <h2 className="mt-4 font-display text-[28px] font-semibold leading-tight tracking-tight">
+      <h2 className="ios-title-1 mt-4">
         Good shot?
       </h2>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--snap-text-soft)]">
+      <p className="ios-subhead mt-1.5 text-[var(--ios-label-2)]">
         I&apos;ll read the {category.id === "device" ? "damage" : "evidence"} from this photo. If
         it&apos;s blurry or partial, retake now — saves us both time.
       </p>
 
-      <div className="relative mt-5 overflow-hidden rounded-2xl border border-[var(--snap-border)] bg-black">
+      <div className="relative mt-5 overflow-hidden rounded-2xl border border-[var(--ios-separator-opaque)] bg-black">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={previewUrl}
@@ -757,7 +770,7 @@ function ReviewScreen({
           className="block w-full max-h-[58vh] object-cover"
         />
         <div className="absolute left-3 top-3">
-          <span className="rounded-lg bg-black/65 px-2.5 py-1 snap-mono text-[10px] text-white backdrop-blur">
+          <span className="rounded-lg bg-black/65 px-2.5 py-1 snap-rounded-mono text-[10px] text-white backdrop-blur">
             {file.name.length > 24 ? file.name.slice(0, 22) + "…" : file.name} · {formatBytes(file.size)}
           </span>
         </div>
@@ -805,12 +818,12 @@ function VoiceScreen({
         backLabel={state === "recording" ? "Cancel" : "Back"}
       />
 
-      <h2 className="mt-4 font-display text-[28px] font-semibold leading-tight tracking-tight">
+      <h2 className="ios-title-1 mt-4">
         {state === "idle" && "Tell me what happened."}
         {state === "recording" && "Listening…"}
         {state === "transcribing" && "Reading you back…"}
       </h2>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--snap-text-soft)]">
+      <p className="ios-subhead mt-1.5 text-[var(--ios-label-2)]">
         {state === "idle" &&
           (category.id === "travel" || category.id === "luggage"
             ? "Where, when, how long — natural speech, no forms."
@@ -820,10 +833,10 @@ function VoiceScreen({
       </p>
 
       <div className="mt-10 flex flex-1 flex-col items-center justify-center text-center">
-        <div className="snap-mono text-[64px] font-light leading-none tabular-nums tracking-tight">
+        <div className="text-[64px] font-light leading-none tabular-nums tracking-tight">
           {formatTime(state === "idle" ? 0 : elapsed)}
         </div>
-        <div className="mt-2 snap-mono text-[10px] uppercase tracking-[0.14em] text-[var(--snap-text-muted)]">
+        <div className="ios-caption-2 mt-2 uppercase tracking-[0.14em] text-[var(--ios-label-3)]">
           {state === "idle"
             ? "Up to 20 seconds"
             : state === "recording"
@@ -836,8 +849,8 @@ function VoiceScreen({
             stream={stream}
             barClassName={
               state === "recording"
-                ? "bg-[var(--snap-lime)]"
-                : "bg-[var(--snap-text-muted)]/60"
+                ? "bg-[var(--bunq-orange)]"
+                : "bg-[var(--ios-label-3)]/60"
             }
             bars={32}
           />
@@ -849,9 +862,9 @@ function VoiceScreen({
               type="button"
               onClick={onStart}
               aria-label="Start recording"
-              className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--snap-lime)] active:scale-95 transition-transform"
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--bunq-orange)] active:scale-95 transition-transform"
             >
-              <MicGlyph color="var(--snap-ink)" />
+              <MicGlyph color="var(--ios-bg)" />
             </button>
           )}
           {state === "recording" && (
@@ -859,15 +872,15 @@ function VoiceScreen({
               type="button"
               onClick={onStop}
               aria-label="Stop recording"
-              className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[var(--snap-lime)] active:scale-95 transition-transform"
+              className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[var(--bunq-orange)] active:scale-95 transition-transform"
             >
-              <span className="absolute inset-0 animate-ping rounded-full bg-[var(--snap-lime)]/30" />
-              <span className="relative h-7 w-7 rounded-md bg-[var(--snap-ink)]" />
+              <span className="absolute inset-0 animate-ping rounded-full bg-[var(--bunq-orange)]/30" />
+              <span className="relative h-7 w-7 rounded-md bg-[var(--ios-bg)]" />
             </button>
           )}
           {state === "transcribing" && (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-[var(--snap-lime)]/30">
-              <Spinner color="var(--snap-lime)" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-[var(--bunq-orange)]/30">
+              <Spinner color="var(--bunq-orange)" />
             </div>
           )}
         </div>
@@ -898,19 +911,19 @@ function ConfirmScreen({
     <div className="flex flex-1 flex-col px-6 pb-8 pt-6">
       <StepHeader step={3} total={3} title="Here's what I heard" onBack={onBack} />
 
-      <h2 className="mt-4 font-display text-[28px] font-semibold leading-tight tracking-tight">
+      <h2 className="ios-title-1 mt-4">
         Sound right?
       </h2>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--snap-text-soft)]">
+      <p className="ios-subhead mt-1.5 text-[var(--ios-label-2)]">
         If anything&apos;s off, re-record. Otherwise tap confirm and I&apos;ll work the rest.
       </p>
 
-      <div className="mt-6 rounded-2xl border border-[var(--snap-border)] bg-[var(--snap-surface)] p-4">
+      <div className="mt-6 rounded-2xl border border-[var(--ios-separator-opaque)] bg-[var(--ios-bg-2)] p-4">
         <div className="flex items-start gap-2.5">
-          <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--snap-lime)] text-[10px] font-extrabold text-[var(--snap-ink)]">
+          <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--bunq-orange)] text-[10px] font-extrabold text-[var(--ios-bg)]">
             F
           </div>
-          <p className="text-[15px] leading-relaxed text-[var(--snap-text)]">
+          <p className="ios-body text-[var(--ios-label)]">
             &ldquo;{transcript}&rdquo;
           </p>
         </div>
@@ -933,15 +946,13 @@ function AnalyzingScreen({ step }: { step: SubmitStep }) {
   return (
     <div className="flex flex-1 flex-col px-6 pb-8 pt-12">
       <div className="flex flex-col items-center text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--snap-lime)] text-2xl font-extrabold text-[var(--snap-ink)]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--bunq-orange)] text-2xl font-extrabold text-[var(--ios-bg)]">
           F
         </div>
-        <h2 className="mt-5 font-display text-[28px] font-semibold leading-tight tracking-tight">
-          Give me a few seconds.
-        </h2>
-        <p className="mt-2 max-w-[28ch] text-[14px] leading-relaxed text-[var(--snap-text-soft)]">
+        <h2 className="ios-title-1 mt-5">Give me a few seconds.</h2>
+        <p className="ios-subhead mt-2 max-w-[28ch] text-[var(--ios-label-2)]">
           I&apos;m running a few checks in parallel — usually about{" "}
-          <span className="text-[var(--snap-text)]">8 seconds</span>.
+          <span className="text-[var(--ios-label)]">8 seconds</span>.
         </p>
       </div>
 
@@ -955,23 +966,23 @@ function AnalyzingScreen({ step }: { step: SubmitStep }) {
               key={s}
               className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 ${
                 active
-                  ? "border-[var(--snap-lime-border)] bg-[var(--snap-lime-faint)]"
-                  : "border-[var(--snap-border)] bg-[var(--snap-surface)]"
+                  ? "border-[rgba(255,106,0,0.32)] bg-[var(--bunq-orange-faint)]"
+                  : "border-[var(--ios-separator-opaque)] bg-[var(--ios-bg-2)]"
               } ${dim ? "opacity-50" : ""}`}
             >
               <span
                 className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                  done ? "bg-[var(--snap-lime)]" : active ? "bg-[var(--snap-lime)] animate-pulse" : "bg-[var(--snap-text-muted)]"
+                  done ? "bg-[var(--bunq-orange)]" : active ? "bg-[var(--bunq-orange)] animate-pulse" : "bg-[var(--ios-label-3)]"
                 }`}
               />
               <div className="min-w-0">
-                <p className="text-[14px] font-medium leading-tight">{STEP_LABELS[s]}</p>
-                <p className="mt-0.5 text-[12px] leading-snug text-[var(--snap-text-soft)]">
+                <p className="ios-callout font-medium">{STEP_LABELS[s]}</p>
+                <p className="mt-0.5 text-[12px] leading-snug text-[var(--ios-label-2)]">
                   {STEP_SUBLABELS[s]}
                 </p>
               </div>
               {done && (
-                <span className="ml-auto text-[var(--snap-lime)]">
+                <span className="ml-auto text-[var(--bunq-orange)]">
                   <CheckIcon />
                 </span>
               )}
@@ -1012,31 +1023,31 @@ function ResultScreen({
 
       {tone === "approved" ? (
         <>
-          <p className="mt-6 snap-mono text-[10px] uppercase tracking-[0.14em] text-[var(--snap-text-muted)]">
+          <p className="ios-caption-1 mt-6 uppercase tracking-[0.14em] text-[var(--ios-label-3)]">
             Paid to your bunq account
           </p>
-          <p className="mt-2 font-display text-[64px] font-semibold leading-none tabular-nums tracking-tight text-[var(--snap-text)]">
+          <p className="mt-2 text-[56px] font-bold leading-none tabular-nums tracking-tight text-[var(--ios-label)]">
             {formatEUR(decision.payout_eur || decision.claim_amount_eur)}
           </p>
-          <p className="mt-3 text-[14px] leading-relaxed text-[var(--snap-text-soft)]">
+          <p className="ios-subhead mt-3 text-[var(--ios-label-2)]">
             {decision.reason}
           </p>
         </>
       ) : tone === "escalated" ? (
         <>
-          <h2 className="mt-6 font-display text-[32px] font-semibold leading-tight tracking-tight">
+          <h2 className="ios-title-1 mt-6">
             A specialist is picking this up.
           </h2>
-          <p className="mt-3 text-[14px] leading-relaxed text-[var(--snap-text-soft)]">
+          <p className="ios-subhead mt-3 text-[var(--ios-label-2)]">
             {decision.reason}
           </p>
         </>
       ) : (
         <>
-          <h2 className="mt-6 font-display text-[32px] font-semibold leading-tight tracking-tight">
+          <h2 className="ios-title-1 mt-6">
             This isn&apos;t covered.
           </h2>
-          <p className="mt-3 text-[14px] leading-relaxed text-[var(--snap-text-soft)]">
+          <p className="ios-subhead mt-3 text-[var(--ios-label-2)]">
             {decision.reason}
           </p>
         </>
@@ -1068,14 +1079,14 @@ function ResultScreen({
 
 function ResultPill({ tone }: { tone: "approved" | "escalated" | "rejected" }) {
   const map = {
-    approved: { label: "Approved · paid", color: "var(--snap-lime)", border: "var(--snap-lime-border)", bg: "var(--snap-lime-faint)" },
-    escalated: { label: "Needs a human look", color: "var(--snap-amber)", border: "rgba(255,179,64,0.3)", bg: "rgba(255,179,64,0.08)" },
-    rejected: { label: "Can't cover this one", color: "var(--snap-red)", border: "rgba(255,107,107,0.3)", bg: "rgba(255,107,107,0.08)" },
+    approved: { label: "Approved · paid", color: "var(--bunq-orange)", border: "rgba(255,106,0,0.32)", bg: "var(--bunq-orange-faint)" },
+    escalated: { label: "Needs a human look", color: "var(--ios-orange)", border: "rgba(255,179,64,0.3)", bg: "rgba(255,179,64,0.08)" },
+    rejected: { label: "Can't cover this one", color: "var(--ios-red)", border: "rgba(255,107,107,0.3)", bg: "rgba(255,107,107,0.08)" },
   } as const;
   const t = map[tone];
   return (
     <span
-      className="inline-flex items-center gap-2 rounded-full border px-3 py-1 snap-mono text-[10px] uppercase tracking-[0.14em]"
+      className="inline-flex items-center gap-2 rounded-full border px-3 py-1 snap-rounded-mono text-[10px] uppercase tracking-[0.14em]"
       style={{ color: t.color, borderColor: t.border, background: t.bg }}
     >
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.color }} />
@@ -1086,9 +1097,9 @@ function ResultPill({ tone }: { tone: "approved" | "escalated" | "rejected" }) {
 
 function MetaRow({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--snap-border)] pb-2.5">
-      <span className="text-[13px] text-[var(--snap-text-muted)]">{k}</span>
-      <span className="text-right text-[14px] tabular-nums text-[var(--snap-text)]">{v}</span>
+    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--ios-separator-opaque)] pb-2.5">
+      <span className="ios-footnote text-[var(--ios-label-3)]">{k}</span>
+      <span className="ios-subhead text-right tabular-nums text-[var(--ios-label)]">{v}</span>
     </div>
   );
 }
@@ -1101,10 +1112,8 @@ function ErrorScreen({ error, onReset }: { error: string; onReset: () => void })
   return (
     <div className="flex flex-1 flex-col px-6 pb-8 pt-12">
       <ResultPill tone="rejected" />
-      <h2 className="mt-6 font-display text-[28px] font-semibold leading-tight tracking-tight">
-        Something tripped me up.
-      </h2>
-      <p className="mt-3 text-[14px] leading-relaxed text-[var(--snap-text-soft)]">{error}</p>
+      <h2 className="ios-title-1 mt-6">Something tripped me up.</h2>
+      <p className="ios-subhead mt-3 text-[var(--ios-label-2)]">{error}</p>
       <div className="mt-auto pt-8">
         <PrimaryCTA onClick={onReset}>Try again</PrimaryCTA>
       </div>
@@ -1116,6 +1125,87 @@ function ErrorScreen({ error, onReset }: { error: string; onReset: () => void })
 // Shared bits
 // ════════════════════════════════════════════════════════════════════════════
 
+/** iOS-style navigation bar — 44pt tall, optional left/right slots, centered
+ *  inline title. Used at the top of every screen except the camera. */
+function NavBar({
+  left,
+  right,
+  title,
+}: {
+  left?: React.ReactNode;
+  right?: React.ReactNode;
+  title?: string;
+}) {
+  return (
+    <div className="flex h-11 items-center justify-between">
+      <div className="flex min-w-[44px] items-center">{left}</div>
+      <div className="flex-1 text-center">
+        {title && <span className="ios-headline">{title}</span>}
+      </div>
+      <div className="flex min-w-[44px] items-center justify-end">{right}</div>
+    </div>
+  );
+}
+
+/** iOS chevron-back button. Tinted to the system accent — we use bunq orange. */
+function BackButton({
+  onClick,
+  label = "Back",
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="-ml-1.5 flex h-11 items-center gap-0.5 px-1.5 text-[var(--bunq-orange)] active:opacity-50"
+    >
+      <ChevronLeft />
+      <span className="ios-body">{label}</span>
+    </button>
+  );
+}
+
+/** Cancel pseudo-button (iOS shows a plain "Cancel" word, no chevron). */
+function CancelButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="ios-body px-1.5 text-[var(--bunq-orange)] active:opacity-50"
+    >
+      Cancel
+    </button>
+  );
+}
+
+/** Tiny step-progress dots — three for the three-step flow. */
+function StepDots({ step, total }: { step: number; total: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {Array.from({ length: total }).map((_, i) => (
+        <span
+          key={i}
+          className={`h-1 rounded-full transition-all ${
+            i === step - 1
+              ? "w-6 bg-[var(--bunq-orange)]"
+              : i < step - 1
+                ? "w-1.5 bg-[var(--bunq-orange)]"
+                : "w-1.5 bg-[var(--ios-fill-3)]"
+          }`}
+        />
+      ))}
+      <span className="ios-caption-2 ml-1.5 text-[var(--ios-label-3)]">
+        Step {step} of {total}
+      </span>
+    </div>
+  );
+}
+
+/** Legacy header used by older screens — keep as a thin iOS-style alias.
+ *  Renders as nav bar + caption row under it. */
 function StepHeader({
   step,
   total,
@@ -1130,25 +1220,22 @@ function StepHeader({
   backLabel?: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label={backLabel}
-        className="-ml-2 flex h-9 items-center gap-1.5 rounded-full px-2 text-[var(--snap-text-soft)] active:bg-[var(--snap-surface)]"
-      >
-        <ChevronLeft />
-        <span className="snap-mono text-[10px] uppercase tracking-[0.14em]">{backLabel}</span>
-      </button>
-      <span className="snap-mono text-[10px] uppercase tracking-[0.14em] text-[var(--snap-text-muted)]">
-        {step && total ? `Step ${step} of ${total} · ` : ""}
-        {title}
-      </span>
-      <span className="w-9" />
-    </div>
+    <NavBar
+      left={<BackButton onClick={onBack} label={backLabel} />}
+      title={step && total ? title : title}
+      right={
+        step && total ? (
+          <span className="ios-caption-2 mr-1 text-[var(--ios-label-3)]">
+            {step} of {total}
+          </span>
+        ) : undefined
+      }
+    />
   );
 }
 
+/** iOS prominent filled button — bunq orange, full width, 50pt high
+ *  (matches Apple's recommended primary action button height). */
 function PrimaryCTA({
   children,
   onClick,
@@ -1160,14 +1247,14 @@ function PrimaryCTA({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--snap-lime)] text-[16px] font-bold tracking-tight text-[var(--snap-ink)] active:scale-[0.98] transition-transform"
+      className="ios-headline flex h-[50px] w-full items-center justify-center rounded-[14px] bg-[var(--bunq-orange)] text-white active:opacity-80 transition-opacity"
     >
       {children}
-      <ArrowRight />
     </button>
   );
 }
 
+/** iOS gray-fill secondary button — tertiary system fill. */
 function SecondaryCTA({
   children,
   onClick,
@@ -1179,7 +1266,7 @@ function SecondaryCTA({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-12 w-full items-center justify-center rounded-2xl border border-[var(--snap-border)] bg-[var(--snap-surface)] text-[14px] font-medium text-[var(--snap-text)] active:bg-[var(--snap-surface-2)]"
+      className="ios-body flex h-[50px] w-full items-center justify-center rounded-[14px] bg-[var(--ios-fill-3)] text-[var(--bunq-orange)] active:opacity-60 transition-opacity"
     >
       {children}
     </button>
@@ -1198,7 +1285,7 @@ function ChevronLeft() {
 
 function ChevronRight() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--snap-text-muted)]" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ios-label-3)]" aria-hidden>
       <path d="M5 2l5.5 5L5 12" />
     </svg>
   );

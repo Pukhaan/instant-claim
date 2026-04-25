@@ -109,33 +109,59 @@ body {
   font-feature-settings: "cv11", "ss01";
 }
 
-/* SnapClaim · "lab" persona — scoped, dark + lime, mobile-native claim flow.
-   Applies *only* under .snap so the rest of Teller keeps the orange-on-cream
-   look. Variables here mirror the design canvas tokens 1:1. */
+/* Claim flow · iOS-native chrome with bunq orange accent.
+   Scoped under .snap. Color tokens mirror Apple's iOS dark-mode system
+   palette (systemBackground / secondarySystemBackground / label / fill etc.)
+   so the layout reads as a native iPhone app. The accent is bunq orange
+   (#FF6A00) instead of systemBlue. Typography uses the SF system stack,
+   which iOS Safari resolves to the actual San Francisco family. */
 .snap {
-  --snap-ink: #0a0c09;
-  --snap-surface: #141711;
-  --snap-surface-2: #1c1f18;
-  --snap-text: #ecefe4;
-  --snap-text-muted: #717a68;
-  --snap-text-soft: #9aa08c;
-  --snap-lime: #c8f535;
-  --snap-lime-dim: rgba(200, 245, 53, 0.15);
-  --snap-lime-faint: rgba(200, 245, 53, 0.06);
-  --snap-lime-border: rgba(200, 245, 53, 0.22);
-  --snap-red: #ff6b6b;
-  --snap-amber: #ffb340;
-  --snap-blue: #7ec4ff;
-  --snap-border: rgba(255, 255, 255, 0.08);
-  --snap-border-strong: rgba(255, 255, 255, 0.14);
-  background: var(--snap-ink);
-  color: var(--snap-text);
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  /* Apple iOS dark-mode backgrounds */
+  --ios-bg: #000000;
+  --ios-bg-2: #1c1c1e;
+  --ios-bg-3: #2c2c2e;
+  --ios-grouped-bg: #000000;
+  --ios-grouped-bg-2: #1c1c1e;
+
+  /* Label colors (decreasing prominence) */
+  --ios-label: rgba(255, 255, 255, 1);
+  --ios-label-2: rgba(235, 235, 245, 0.6);
+  --ios-label-3: rgba(235, 235, 245, 0.3);
+  --ios-label-4: rgba(235, 235, 245, 0.18);
+
+  /* Separators + fills */
+  --ios-separator: rgba(84, 84, 88, 0.65);
+  --ios-separator-opaque: #38383a;
+  --ios-fill-1: rgba(120, 120, 128, 0.36);
+  --ios-fill-2: rgba(120, 120, 128, 0.32);
+  --ios-fill-3: rgba(118, 118, 128, 0.24);
+  --ios-fill-4: rgba(118, 118, 128, 0.18);
+
+  /* iOS systemColors (dark variant) */
+  --ios-blue: #0a84ff;
+  --ios-green: #30d158;
+  --ios-red: #ff453a;
+  --ios-orange: #ff9f0a;
+  --ios-yellow: #ffd60a;
+
+  /* bunq orange — primary brand accent */
+  --bunq-orange: #ff6a00;
+  --bunq-orange-pressed: #d33f00;
+  --bunq-orange-tint: rgba(255, 106, 0, 0.16);
+  --bunq-orange-faint: rgba(255, 106, 0, 0.08);
+
+  background: var(--ios-bg);
+  color: var(--ios-label);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "ss02";
 }
 
-.snap-mono {
-  font-family: var(--font-mono-snap), "SF Mono", ui-monospace, monospace;
+.snap-rounded-mono {
+  font-family:
+    "SF Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", monospace;
 }
 
 /* Stop iOS Safari zooming when an input gets focus — anything ≥16px doesn't
@@ -147,3 +173,16 @@ body {
 .snap * {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* iOS-style typographic scale. Sizes and weights match Apple HIG. */
+.snap .ios-large-title { font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: 0.37px; }
+.snap .ios-title-1 { font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: 0.36px; }
+.snap .ios-title-2 { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: 0.35px; }
+.snap .ios-title-3 { font-size: 20px; line-height: 25px; font-weight: 600; letter-spacing: 0.38px; }
+.snap .ios-headline { font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.41px; }
+.snap .ios-body { font-size: 17px; line-height: 22px; font-weight: 400; letter-spacing: -0.41px; }
+.snap .ios-callout { font-size: 16px; line-height: 21px; font-weight: 400; letter-spacing: -0.32px; }
+.snap .ios-subhead { font-size: 15px; line-height: 20px; font-weight: 400; letter-spacing: -0.24px; }
+.snap .ios-footnote { font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: -0.08px; }
+.snap .ios-caption-1 { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; }
+.snap .ios-caption-2 { font-size: 11px; line-height: 13px; font-weight: 400; letter-spacing: 0.06px; }
