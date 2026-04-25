@@ -144,14 +144,29 @@ body {
   --ios-orange: #ff9f0a;
   --ios-yellow: #ffd60a;
 
-  /* bunq orange — primary brand accent */
+  /* bunq orange — primary brand accent (legacy; Finn flow uses --finn-blue) */
   --bunq-orange: #ff6a00;
   --bunq-orange-pressed: #d33f00;
   --bunq-orange-tint: rgba(255, 106, 0, 0.16);
   --bunq-orange-faint: rgba(255, 106, 0, 0.08);
 
-  background: var(--ios-bg);
-  color: var(--ios-label);
+  /* Finn-flow palette — matches the Figma design exactly. */
+  --finn-bg: #05070a;            /* page background, slightly cooler than pure black */
+  --finn-card: #1c1c1e;          /* surface card */
+  --finn-card-2: #2c2c2e;        /* nested surface */
+  --finn-separator: #464646;     /* row separator inside cards */
+  --finn-text: #f5f7fa;          /* primary text */
+  --finn-muted: #98989f;         /* secondary text / footnotes */
+  --finn-body: #8c99a6;          /* body copy on dark hero sections */
+  --finn-blue: #0c9bff;          /* primary CTA + selected radio */
+  --finn-blue-press: #0a82d8;
+  --finn-orange: #ff7819;        /* numbered step badge ring */
+  --finn-orange-fill: #66300a;   /* numbered step badge fill */
+  --finn-success: #29cc88;       /* payout green */
+  --finn-danger: #ed4d4d;        /* damage box / error */
+
+  background: var(--finn-bg);
+  color: var(--finn-text);
   font-family:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Helvetica Neue", system-ui, sans-serif;

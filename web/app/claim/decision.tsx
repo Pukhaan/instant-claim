@@ -12,20 +12,20 @@ export type SubmitStep =
   | "deciding";
 
 export const STEP_LABELS: Record<SubmitStep, string> = {
-  reading_photo: "Reading the photo",
-  extracting_facts: "Pulling out the facts",
-  matching_purchase: "Matching your purchase in bunq",
-  checking_policy: "Checking your cover, clause by clause",
-  sanity_checking: "Sanity-checking the numbers",
-  deciding: "Making a call",
+  reading_photo: "Reading your photo",
+  extracting_facts: "Listening to your note",
+  matching_purchase: "Matching your purchase",
+  checking_policy: "Sending data to Quovo",
+  sanity_checking: "Confirming with Quovo policy",
+  deciding: "Calculating instant payout",
 };
 
 export const STEP_SUBLABELS: Record<SubmitStep, string> = {
   reading_photo: "Damage type, severity, evidence quality",
-  extracting_facts: "What, when, where, how much",
-  matching_purchase: "Date and merchant in your transaction history",
-  checking_policy: "Your bunq Easy Travel + Device cover",
-  sanity_checking: "Claim vs. typical repair / market value",
+  extracting_facts: "Pulling out what, when, where, how",
+  matching_purchase: "Date and merchant in your bunq history",
+  checking_policy: "bunq's insurance partner is reviewing",
+  sanity_checking: "Your bunq Easy Travel + Device cover",
   deciding: "Approve, escalate, or decline — with reason",
 };
 
