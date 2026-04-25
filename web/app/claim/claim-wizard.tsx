@@ -38,6 +38,7 @@ import CategoryStage, {
   type CategoryId,
 } from "./stages/category";
 import CaptureStage from "./stages/capture";
+import VerifyStage from "./stages/verify";
 
 const MAX_RECORD_S = 20;
 
@@ -55,6 +56,12 @@ const COVERAGE_MAP: Record<CategoryId, Coverage> = {
 
 type Stage =
   | { kind: "category"; selectedId: CategoryId | null }
+  | {
+      kind: "verify";
+      category: Category;
+      imei: string;
+      fraudConfirmed: boolean;
+    }
   | { kind: "capture"; category: Category }
   | { kind: "review"; category: Category; file: File; preview: string }
   | { kind: "voice"; category: Category; file: File; preview: string }
@@ -143,8 +150,24 @@ export default function ClaimWizard() {
     if (stage.kind !== "category" || !stage.selectedId) return;
     const category = CATEGORIES.find((c) => c.id === stage.selectedId);
     if (!category) return;
+    // Device damage branches through a verify step (IMEI + fraud attestation)
+    // before the camera; other categories go straight to capture.
+    if (category.id === "damaged") {
+      setStage({
+        kind: "verify",
+        category,
+        imei: "",
+        fraudConfirmed: false,
+      });
+      return;
+    }
     setStage({ kind: "capture", category });
-    // Open native camera immediately on advance
+    setTimeout(() => fileInputRef.current?.click(), 50);
+  }
+
+  function continueFromVerify() {
+    if (stage.kind !== "verify") return;
+    setStage({ kind: "capture", category: stage.category });
     setTimeout(() => fileInputRef.current?.click(), 50);
   }
 
@@ -348,12 +371,45 @@ export default function ClaimWizard() {
             />
           )}
 
-          {stage.kind === "capture" && (
-            <CaptureStage
-              onShutter={() => fileInputRef.current?.click()}
+          {stage.kind === "verify" && (
+            <VerifyStage
+              imei={stage.imei}
+              fraudConfirmed={stage.fraudConfirmed}
+              onImeiChange={(v) =>
+                setStage((s) => (s.kind === "verify" ? { ...s, imei: v } : s))
+              }
+              onFraudChange={(v) =>
+                setStage((s) =>
+                  s.kind === "verify" ? { ...s, fraudConfirmed: v } : s,
+                )
+              }
+              onContinue={continueFromVerify}
               onBack={() =>
                 setStage({ kind: "category", selectedId: stage.category.id })
               }
+              onClose={() => router.push("/")}
+            />
+          )}
+
+          {stage.kind === "capture" && (
+            <CaptureStage
+              onShutter={() => fileInputRef.current?.click()}
+              onBack={() => {
+                // Device damage came through verify; others from category.
+                if (stage.category.id === "damaged") {
+                  setStage({
+                    kind: "verify",
+                    category: stage.category,
+                    imei: "",
+                    fraudConfirmed: false,
+                  });
+                } else {
+                  setStage({
+                    kind: "category",
+                    selectedId: stage.category.id,
+                  });
+                }
+              }}
               onClose={() => router.push("/")}
               categoryLabel={stage.category.label}
             />
