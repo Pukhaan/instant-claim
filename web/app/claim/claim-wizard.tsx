@@ -507,7 +507,7 @@ export default function ClaimWizard() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+        accept="image/*"
         capture="environment"
         className="sr-only"
         onChange={(e) => {

@@ -876,7 +876,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
       <input
         ref={claimFileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+        accept="image/*"
         capture="environment"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -896,7 +896,7 @@ export default function ChatView({ hero = false }: { hero?: boolean }) {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/*"
+          accept="image/*"
           capture="environment"
           onChange={(e) => {
             const f = e.target.files?.[0];
